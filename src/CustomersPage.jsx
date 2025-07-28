@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import TicketDetails from './TicketDetails';
 import { useAppStore } from './store';
 
 function CustomerForm({ onSave, initial = {}, isEdit }) {
@@ -96,12 +97,63 @@ function CustomerSearch({ onSelect }) {
   );
 }
 
-function CustomerDetails({ customer, onEdit, onNewTicket }) {
+function CustomerDetails({ customer, onEdit }) {
   const tickets = useAppStore(s => s.tickets);
+  const setTickets = useAppStore(s => s.setTickets);
   const customerTickets = tickets.filter(t => t.customerId === customer.id);
   const activeTickets = customerTickets.filter(t => t.status !== 'Completed');
   const completedTickets = customerTickets.filter(t => t.status === 'Completed');
   const [showCompleted, setShowCompleted] = useState(false);
+  const [selectedTicket, setSelectedTicket] = useState(null);
+  const [newTicketId, setNewTicketId] = useState(null);
+
+  function handleNewTicket() {
+    const newTicket = {
+      id: Date.now(),
+      customerId: customer.id,
+      status: 'New',
+      createdAt: new Date().toISOString(),
+      item: '',
+    };
+    setTickets([...tickets, newTicket]);
+    setSelectedTicket(newTicket);
+    setNewTicketId(newTicket.id);
+  }
+
+  function handleTicketBack(isDirty) {
+    if (selectedTicket && selectedTicket.id === newTicketId) {
+      if (isDirty) {
+        if (window.confirm('You have unsaved changes. Leave without saving? The new ticket will be discarded.')) {
+          setTickets(tickets.filter(t => t.id !== newTicketId));
+          setSelectedTicket(null);
+          setNewTicketId(null);
+        }
+      } else {
+        setTickets(tickets.filter(t => t.id !== newTicketId));
+        setSelectedTicket(null);
+        setNewTicketId(null);
+      }
+    } else if (isDirty) {
+      if (window.confirm('You have unsaved changes. Leave without saving?')) {
+        setSelectedTicket(null);
+      }
+    } else {
+      setSelectedTicket(null);
+    }
+  }
+
+  if (selectedTicket) {
+    return (
+      <div className="bg-white p-4 rounded shadow mt-4">
+        <TicketDetails
+          ticket={selectedTicket}
+          forceEdit={selectedTicket.id === newTicketId}
+          onBack={handleTicketBack}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="bg-white p-4 rounded shadow mt-4">
       <div className="flex justify-between items-center mb-2">
@@ -115,7 +167,7 @@ function CustomerDetails({ customer, onEdit, onNewTicket }) {
         <div><span className="font-semibold">Billing Address:</span> {customer.billingAddress}</div>
         <div><span className="font-semibold">Shipping Address:</span> {customer.shippingAddress}</div>
       </div>
-      <button onClick={onNewTicket} className="bg-green-600 text-white px-4 py-2 rounded mb-2">New Repair Ticket</button>
+      <button onClick={handleNewTicket} className="bg-green-600 text-white px-4 py-2 rounded mb-2">New Repair Ticket</button>
       <div className="mb-2">
         <span className="font-semibold">Active Tickets:</span> {activeTickets.length}
         {activeTickets.length > 0 && (
@@ -123,7 +175,7 @@ function CustomerDetails({ customer, onEdit, onNewTicket }) {
             {activeTickets.map(t => (
               <li key={t.id} className="flex justify-between items-center">
                 <span>#{t.id} - {t.status} ({t.item || 'Item'})</span>
-                <button className="text-blue-600 underline ml-2">View/Update</button>
+                <button className="text-blue-600 underline ml-2" onClick={() => setSelectedTicket(t)}>View/Update</button>
               </li>
             ))}
           </ul>
@@ -139,7 +191,7 @@ function CustomerDetails({ customer, onEdit, onNewTicket }) {
               {completedTickets.map(t => (
                 <li key={t.id} className="flex justify-between items-center">
                   <span>#{t.id} - {t.item || 'Item'} (Completed {t.completedAt || ''})</span>
-                  <button className="text-blue-600 underline ml-2">View Details</button>
+                  <button className="text-blue-600 underline ml-2" onClick={() => setSelectedTicket(t)}>View Details</button>
                 </li>
               ))}
             </ul>
