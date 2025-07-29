@@ -43,6 +43,11 @@ RepairTracker Pro is a React + Vite + Tailwind CSS Progressive Web App (PWA) for
 
 ---
 
+
+## Do Next
+- Finish schema-driven customizable forms (dynamic form rendering from config/schema)
+- Customer record management (delete, admin controls, ticket cascade delete)
+
 ## Immediate Next Step
 **Implement ticket details view and update workflow.**
 - Allow users to view and update individual ticket details from the customer details page.
@@ -52,7 +57,9 @@ RepairTracker Pro is a React + Vite + Tailwind CSS Progressive Web App (PWA) for
 ## Where We Left Off
 - Core customer/ticket creation flow is working and styled.
 - Infinite render loop in CustomerDetails fixed.
-- Ready to implement ticket details navigation and update logic.
+- Ticket details navigation and update logic implemented (ticket URL routing complete).
+- Duplicate customer prevention added (case-insensitive).
+- Roadmap and changelog update pending.
 
 ---
 

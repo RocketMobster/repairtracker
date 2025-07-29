@@ -1,6 +1,7 @@
 
 import React from 'react';
 import { Routes, Route, Link, Navigate } from 'react-router-dom';
+import TicketDetails from './TicketDetails';
 
 
 
@@ -95,6 +96,7 @@ function App() {
         <Route path="/" element={<Dashboard />} />
         <Route path="/tickets" element={currentUser ? <Tickets /> : <Navigate to="/login" />} />
         <Route path="/customers" element={currentUser ? <CustomersPage /> : <Navigate to="/login" />} />
+        <Route path="/customers/:customerId/tickets/:ticketId" element={currentUser ? <TicketDetails /> : <Navigate to="/login" />} />
         <Route path="/admin" element={currentUser?.role === 'Admin' ? <Admin /> : <Navigate to="/login" />} />
         <Route path="/login" element={!currentUser ? <Login /> : <Navigate to="/" />} />
         <Route path="*" element={<Navigate to="/" />} />
