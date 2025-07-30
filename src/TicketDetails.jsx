@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useAppStore } from './store';
 import { useParams, useNavigate } from 'react-router-dom';
+import { generateRmaNumber } from './rmaUtils';
 
 export default function TicketDetails() {
   const { customerId: customerSlug, ticketId } = useParams();
@@ -9,7 +10,15 @@ export default function TicketDetails() {
   const customers = useAppStore(s => s.customers);
   const setTickets = useAppStore(s => s.setTickets);
   const customer = customers.find(c => c.slug === customerSlug);
-  const ticket = tickets.find(t => String(t.id) === String(ticketId) && customer && t.customerId === customer.id);
+  // If customer not found, try to find by ticket.customerId
+  let ticket = tickets.find(t => String(t.id) === String(ticketId) && customer && t.customerId === customer.id);
+  let fallbackCustomer = customer;
+  if (!ticket && tickets.length > 0) {
+    ticket = tickets.find(t => String(t.id) === String(ticketId));
+    if (ticket) {
+      fallbackCustomer = customers.find(c => c.id === ticket.customerId);
+    }
+  }
   const [editMode, setEditMode] = useState(false);
   const [form, setForm] = useState({
     status: ticket?.status || '',
@@ -34,7 +43,7 @@ export default function TicketDetails() {
     }
   }, [editMode]);
 
-  if (!ticket || !customer) {
+  if (!ticket || !fallbackCustomer) {
     return <div className="p-4 text-red-600">Ticket or customer not found.</div>;
   }
 
@@ -70,15 +79,20 @@ export default function TicketDetails() {
   }
 
   if (editMode) {
+    // Fallback: generate RMA number if missing (for old tickets)
+    const rmaNumber = ticket.rmaNumber || generateRmaNumber();
     return (
       <div className="max-w-3xl mx-auto p-4">
         <div className="bg-white p-4 rounded shadow">
           <button
             className="text-blue-600 underline mb-2"
-            onClick={() => navigate(`/customers/${customer.slug}`)}
+            onClick={() => navigate(`/customers/${fallbackCustomer.slug}`)}
             tabIndex={0}
           >&larr; Back to Customer</button>
-          <div className="text-lg font-bold mb-2">Edit Ticket #{ticket.id}</div>
+          <div className="flex items-center justify-between mb-2">
+            <div className="text-2xl font-bold">Edit RMA #{rmaNumber}</div>
+            <div className="text-xs text-gray-400 ml-2">Ticket ID: {ticket.id}</div>
+          </div>
           <form onSubmit={handleSubmit} className="space-y-3" aria-label="Edit Ticket">
             <div>
               <label htmlFor="status" className="block font-semibold">Status<span className="text-red-500">*</span></label>
@@ -109,16 +123,21 @@ export default function TicketDetails() {
     );
   }
 
+  // Fallback: generate RMA number if missing (for old tickets)
+  const rmaNumber = ticket.rmaNumber || generateRmaNumber();
   return (
     <div className="max-w-3xl mx-auto p-4">
       <div className="bg-white p-4 rounded shadow">
         <button
           className="text-blue-600 underline mb-2"
-          onClick={() => navigate(`/customers/${customer.slug}`)}
+          onClick={() => navigate(fallbackCustomer ? `/customers/${fallbackCustomer.slug}` : '/customers')}
           tabIndex={0}
         >&larr; Back to Customer</button>
-        <div className="text-lg font-bold mb-2">Ticket #{ticket.id}</div>
-        <div className="mb-2 text-gray-700">Customer: <span className="font-semibold">{customer.businessName}</span></div>
+        <div className="flex items-center justify-between mb-2">
+          <div className="text-2xl font-bold">RMA #{rmaNumber}</div>
+          <div className="text-xs text-gray-400 ml-2">Ticket ID: {ticket.id}</div>
+        </div>
+        <div className="mb-2 text-gray-700">Customer: <span className="font-semibold">{fallbackCustomer.businessName}</span></div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-2">
           <div><span className="font-semibold">Status:</span> {ticket.status}</div>
           <div><span className="font-semibold">Item:</span> {ticket.item || 'N/A'}</div>
