@@ -1,3 +1,20 @@
+# Changelog
+## [0.3.0] - 2025-07-31
+### Added
+- Schema-driven forms for customers and tickets, with dynamic rendering from config/schema
+- Admin-editable field groups (schema-ready) for ticket/customer forms and details views
+- Colored grouping boxes for workflow steps in ticket and customer details views
+- Phone number input masking (US/UK) in all forms for live formatting as user types
+- Phone extension fields for all phone numbers (edit and display)
+- Date fields now use proper date pickers in all forms
+- All phone numbers display formatted in details and search views
+- Roadmap and PRD updated to reflect new extensibility, admin, and UI features
+### Fixed
+- Customer/ticket details views now robustly render all schema fields, including phone formatting and extensions
+- UI polish: consistent field grouping, colored backgrounds, and improved layout
+### Notes
+- This release completes the schema-driven forms and details card. Ready for merge to main.
+
 
 # Admin Backend TODO
 - User/role management: add admin, staff, and custom roles; restrict sensitive actions (delete, schema changes) to admins
@@ -9,6 +26,11 @@
 - Branding: allow admin to upload logo, set business info, and customize PWA appearance
 - Backup/restore: admin can trigger backup and restore of all data
 - Advanced search/filter: admin UI for searching/filtering tickets and customers by any field
+- Localization/regional settings: admin can set default date format (e.g., mm-dd-yyyy, dd-mmm-yyyy, mm/dd/yy) and phone number format (US/UK/other) for all forms and displays; settings applied app-wide
+
+# Other admin-controlled features discussed today:
+- Schema-driven form editor: allow admin to add/remove/move date/signature/notes fields for ticket workflow steps (e.g., Reception, Inspection, Repaired, Shipped, etc.)
+- Kanban board configuration: admin can enable/disable Kanban board, set default columns/statuses, and control drag/drop permissions
 
 
 # Changelog

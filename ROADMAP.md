@@ -15,19 +15,24 @@ RepairTracker Pro is a React + Vite + Tailwind CSS Progressive Web App (PWA) for
 - [x] Add vite-plugin-pwa for PWA support
 
 ### 2. Core Features: Customer & Ticket Management
-- [x] Customer CRUD UI (add, search, edit, details)
-- [x] Ticket creation on customer add
-- [x] Ticket history and status display per customer
-- [x] Fix infinite render loop in CustomerDetails
-- [ ] Ticket details view and update workflow
-- [ ] Error boundaries for robust error handling
-- [ ] User authentication and role-based access
+### 3. Core Lists & Boards
+- [ ] Searchable, alphabetized customer list page
+    - Dedicated page listing all customers in alphabetical order with search and filter options.
+- [ ] Global ticket list/search page
+    - Page listing all tickets (active and closed), searchable by RMA number, company name, or ticket number.
+- [ ] Kanban board for ticket prioritization
+    - Drag-and-drop Kanban board for ticket workflow, status management, and prioritization. Enterprise-level feature for real-time ticket management.
+
+
 
 ### 3. Advanced Features
-- [ ] Plugin system for extensibility
-- [ ] Role/permission management UI
-- [ ] User management (add/edit users, assign roles)
-- [ ] Custom statuses and workflow configuration
+
+- [ ] Admin-editable field groups for ticket/customer forms and details views
+    - Allow clients to define custom groupings of fields (with label, color, and order) from the admin backend for both forms and details views. This enables highly flexible, industry-specific UI layouts.
+
+- [ ] Usage logs for admin backend
+    - Secure log files are generated whenever a customer is entered (with a repair ticket/RMA number), when additional tickets/RMA numbers are added for existing customers, when customers or tickets are deleted, and when tickets or customers are edited.
+    - Each log entry records the date, time, user, and operation performed.
 
 ### 4. UI/UX & PWA Polish
 - [ ] Responsive, modern UI with Tailwind
@@ -44,25 +49,17 @@ RepairTracker Pro is a React + Vite + Tailwind CSS Progressive Web App (PWA) for
 ---
 
 
-## Do Next
-- Finish schema-driven customizable forms (dynamic form rendering from config/schema)
+
+## Completed in v0.3.0
+- Schema-driven customizable forms (dynamic form rendering from config/schema)
 - Customer record management (delete, admin controls, ticket cascade delete)
-
-## Immediate Next Step
-**Implement ticket details view and update workflow.**
-- Allow users to view and update individual ticket details from the customer details page.
-
----
-
-## Where We Left Off
-- Core customer/ticket creation flow is working and styled.
-- Infinite render loop in CustomerDetails fixed.
-- Ticket details navigation and update logic implemented (ticket URL routing complete).
-- Duplicate customer prevention added (case-insensitive).
-- Roadmap and changelog update pending.
-
----
+- Ticket details view and update workflow (details view, update, grouping, colored boxes)
+- Phone number input masking and extension support in all forms
+- Date pickers for all date fields
+- UI polish: consistent grouping, colored backgrounds, improved layout
+- Roadmap, PRD, and changelog updated
 
 ## Notes
+- Version bumped to 0.3.0 for schema-driven forms, extensibility, and UI/UX improvements
 - Version control and GitHub integration to begin next session.
 - All major setup and initial workflows are complete; focus now shifts to ticket workflow and advanced features.

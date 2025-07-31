@@ -1,66 +1,25 @@
+import { formatPhoneNumber } from './phoneFormat';
+
 import React, { useState, useEffect } from 'react';
+// ...existing code...
 import { nanoid } from 'nanoid';
 import { generateRmaNumber } from './rmaUtils';
 import { useAppStore } from './store';
 import { useNavigate, useParams } from 'react-router-dom';
+import DynamicForm from './DynamicForm';
+import { customerFormSchema } from './formSchemas';
+
 
 function CustomerForm({ onSave, initial = {}, isEdit }) {
-  const [form, setForm] = useState({
-    businessName: initial.businessName || '',
-    contactName: initial.contactName || '',
-    contactPhone: initial.contactPhone || '',
-    contactEmail: initial.contactEmail || '',
-    billingAddress: initial.billingAddress || '',
-    shippingAddress: initial.shippingAddress || '',
-  });
-  const [error, setError] = useState('');
-
-  function handleChange(e) {
-    setForm(f => ({ ...f, [e.target.name]: e.target.value }));
-  }
-  function handleSubmit(e) {
-    e.preventDefault();
-    // Basic validation
-    if (!form.businessName || !form.contactName || !form.contactPhone || !form.contactEmail) {
-      setError('Please fill in all required fields.');
-      return;
-    }
-    setError('');
-    onSave(form);
-  }
+  // Use DynamicForm for schema-driven rendering
   return (
-    <form onSubmit={handleSubmit} className="space-y-3 bg-white p-4 rounded shadow">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        <div>
-          <label className="block font-semibold">Business Name*</label>
-          <input name="businessName" value={form.businessName} onChange={handleChange} className="w-full border p-2 rounded" required />
-        </div>
-        <div>
-          <label className="block font-semibold">Contact Name*</label>
-          <input name="contactName" value={form.contactName} onChange={handleChange} className="w-full border p-2 rounded" required />
-        </div>
-        <div>
-          <label className="block font-semibold">Contact Phone*</label>
-          <input name="contactPhone" value={form.contactPhone} onChange={handleChange} className="w-full border p-2 rounded" required />
-        </div>
-        <div>
-          <label className="block font-semibold">Contact Email*</label>
-          <input name="contactEmail" value={form.contactEmail} onChange={handleChange} className="w-full border p-2 rounded" required />
-        </div>
-        <div>
-          <label className="block font-semibold">Billing Address</label>
-          <input name="billingAddress" value={form.billingAddress} onChange={handleChange} className="w-full border p-2 rounded" />
-        </div>
-        <div>
-          <label className="block font-semibold">Shipping Address</label>
-          <input name="shippingAddress" value={form.shippingAddress} onChange={handleChange} className="w-full border p-2 rounded" />
-        </div>
-      </div>
-      {error && <div className="text-red-600">{error}</div>}
-      <div className="flex gap-2 mt-2">
-        <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded">{isEdit ? 'Save Changes' : 'Create & New Repair Ticket'}</button>
-      </div>
-    </form>
+    <div className="bg-white p-4 rounded shadow">
+      <DynamicForm
+        schema={customerFormSchema}
+        initialValues={initial}
+        onSubmit={onSave}
+      />
+    </div>
   );
 }
 
@@ -68,12 +27,19 @@ function CustomerSearch({ onSelect }) {
   const customersRaw = useAppStore(s => s.customers);
   const customers = Array.isArray(customersRaw) ? customersRaw : [];
   const [query, setQuery] = useState('');
-  const results = customers.filter(c =>
-    c.businessName.toLowerCase().includes(query.toLowerCase()) ||
-    c.contactName.toLowerCase().includes(query.toLowerCase()) ||
-    c.contactPhone.includes(query) ||
-    c.contactEmail.toLowerCase().includes(query.toLowerCase())
-  );
+  const results = customers.filter(c => {
+    const company = (c.companyName ?? c.businessName ?? '') + '';
+    const contact = (c.contactName ?? '') + '';
+    const phone = (c.contactPhone ?? '') + '';
+    const email = (c.contactEmail ?? '') + '';
+    const q = (query ?? '') + '';
+    return (
+      company.toLowerCase().includes(q.toLowerCase()) ||
+      contact.toLowerCase().includes(q.toLowerCase()) ||
+      phone.includes(q) ||
+      email.toLowerCase().includes(q.toLowerCase())
+    );
+  });
   return (
     <div className="mb-4">
       <input
@@ -88,8 +54,8 @@ function CustomerSearch({ onSelect }) {
           {results.map(c => (
             <div key={c.id} className="p-2 border-b flex justify-between items-center hover:bg-blue-50 cursor-pointer" onClick={() => onSelect(c)}>
               <div>
-                <div className="font-semibold">{c.businessName}</div>
-                <div className="text-sm text-gray-600">{c.contactName} | {c.contactPhone}</div>
+                <div className="font-semibold">{c.companyName || c.businessName || '(No Company Name)'}</div>
+                <div className="text-sm text-gray-600">{c.contactName} | {formatPhoneNumber(c.contactPhone, c.contactPhone_country || 'US')}{c.contactPhoneExt ? ` x${c.contactPhoneExt}` : ''}</div>
               </div>
               <button className="bg-blue-500 text-white px-2 py-1 rounded">Select</button>
             </div>
@@ -132,8 +98,13 @@ function CustomerDetails({ customer, onEdit, onNewTicket, onDeleted }) {
 
   return (
     <div className="bg-white p-4 rounded shadow mt-4">
+      <div className="mb-2">
+        <div className="text-2xl font-bold text-blue-900">
+          {customer.companyName || customer.businessName || '(No Company Name)'}
+        </div>
+      </div>
       <div className="flex justify-between items-center mb-2">
-        <div className="text-lg font-bold">{customer.businessName}</div>
+        <div></div>
         <div className="flex gap-2">
           <button onClick={onEdit} className="text-blue-600 underline">Edit</button>
           {userIsAdmin && (
@@ -143,20 +114,35 @@ function CustomerDetails({ customer, onEdit, onNewTicket, onDeleted }) {
                 onClick={() => setShowDeleteConfirm(true)}
                 title="Delete customer and all tickets"
               >Delete</button>
-              {/*
-                NOTE: When implementing user roles/permissions, replace userIsAdmin with real check.
-                This is a placeholder to ensure this logic is not overlooked.
-              */}
             </>
           )}
         </div>
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-2">
-        <div><span className="font-semibold">Contact:</span> {customer.contactName}</div>
-        <div><span className="font-semibold">Phone:</span> {customer.contactPhone}</div>
-        <div><span className="font-semibold">Email:</span> {customer.contactEmail}</div>
-        <div><span className="font-semibold">Billing Address:</span> {customer.billingAddress}</div>
-        <div><span className="font-semibold">Shipping Address:</span> {customer.shippingAddress}</div>
+      <div className="mb-2 p-4 rounded bg-blue-50">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+          {customerFormSchema
+            .filter(f => f.type !== 'hidden')
+            .sort((a, b) => (a.order || 0) - (b.order || 0))
+            .map(f => {
+              let value = customer[f.name] || '';
+              if (f.type === 'tel') {
+                value = formatPhoneNumber(value, customer[`${f.name}_country`] || 'US');
+                // If extension field exists, append it
+                const extField = f.name + 'Ext';
+                if (customer[extField]) {
+                  value = value + ` x${customer[extField]}`;
+                }
+              }
+              if (f.type === 'date' && value) {
+                value = new Date(value).toLocaleDateString();
+              }
+              return (
+                <div key={f.name}>
+                  <span className="font-semibold">{f.label}:</span> {value || <span className="text-gray-400">—</span>}
+                </div>
+              );
+            })}
+        </div>
       </div>
       <button onClick={onNewTicket} className="bg-green-600 text-white px-4 py-2 rounded mb-2">New Repair Ticket</button>
       {showDeleteConfirm && (
@@ -177,7 +163,7 @@ function CustomerDetails({ customer, onEdit, onNewTicket, onDeleted }) {
       )}
       {deleteMsg && <div className="text-green-700 mt-2" role="status">{deleteMsg}</div>}
       <div className="mb-2">
-        <div className="font-semibold mb-1">Tickets</div>
+        <div className="font-semibold mb-1">Active Tickets</div>
         <div className="overflow-x-auto">
           <table className="min-w-full border text-sm">
             <thead className="bg-gray-100">
@@ -190,28 +176,35 @@ function CustomerDetails({ customer, onEdit, onNewTicket, onDeleted }) {
               </tr>
             </thead>
             <tbody>
-              {activeTickets.map(t => (
-                <tr key={t.id} className="border-b">
-                  <td className="px-2 py-1 font-bold">{t.rmaNumber || '—'}</td>
-                  <td className="px-2 py-1 text-gray-400 text-xs">{t.id}</td>
-                  <td className="px-2 py-1">{t.item || 'Item'}</td>
-                  <td className="px-2 py-1">{t.status}</td>
-                  <td className="px-2 py-1">
-                    <button className="text-blue-600 underline" onClick={() => navigate(`/customers/${customer.slug}/tickets/${t.id}`)}>View</button>
-                  </td>
-                </tr>
-              ))}
-              {showCompleted && completedTickets.map(t => (
-                <tr key={t.id} className="border-b bg-gray-50">
-                  <td className="px-2 py-1 font-bold">{t.rmaNumber || '—'}</td>
-                  <td className="px-2 py-1 text-gray-400 text-xs">{t.id}</td>
-                  <td className="px-2 py-1">{t.item || 'Item'}</td>
-                  <td className="px-2 py-1">Completed{t.completedAt ? ` (${new Date(t.completedAt).toLocaleDateString()})` : ''}</td>
-                  <td className="px-2 py-1">
-                    <button className="text-blue-600 underline" onClick={() => navigate(`/customers/${customer.slug}/tickets/${t.id}`)}>View</button>
-                  </td>
-                </tr>
-              ))}
+              {activeTickets.map(t => {
+                // Always show RMA number, generate if missing
+                const rma = t.rmaNumber || generateRmaNumber();
+                return (
+                  <tr key={t.id} className="border-b">
+                    <td className="px-2 py-1 font-bold">{rma}</td>
+                    <td className="px-2 py-1 text-gray-400 text-xs">{t.id}</td>
+                    <td className="px-2 py-1">{t.item || 'Item'}</td>
+                    <td className="px-2 py-1">{t.status}</td>
+                    <td className="px-2 py-1">
+                      <button className="text-blue-600 underline" onClick={() => navigate(`/customers/${customer.slug}/tickets/${t.id}`)}>View</button>
+                    </td>
+                  </tr>
+                );
+              })}
+              {showCompleted && completedTickets.map(t => {
+                const rma = t.rmaNumber || generateRmaNumber();
+                return (
+                  <tr key={t.id} className="border-b bg-gray-50">
+                    <td className="px-2 py-1 font-bold">{rma}</td>
+                    <td className="px-2 py-1 text-gray-400 text-xs">{t.id}</td>
+                    <td className="px-2 py-1">{t.item || 'Item'}</td>
+                    <td className="px-2 py-1">Completed{t.completedAt ? ` (${new Date(t.completedAt).toLocaleDateString()})` : ''}</td>
+                    <td className="px-2 py-1">
+                      <button className="text-blue-600 underline" onClick={() => navigate(`/customers/${customer.slug}/tickets/${t.id}`)}>View</button>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -267,14 +260,20 @@ export default function CustomersPage() {
   }
 
 function handleAddCustomer(data) {
-  // Prevent duplicate by businessName (case-insensitive, trimmed)
-  const exists = customers.some(c => c.businessName.trim().toLowerCase() === data.businessName.trim().toLowerCase());
+  // Use companyName from schema-driven form
+  const name = (data.companyName || '').trim();
+  if (!name) {
+    setAddError('Company Name is required.');
+    return;
+  }
+  // Prevent duplicate by companyName (case-insensitive, trimmed)
+  const exists = customers.some(c => ((c.companyName || '').trim().toLowerCase() === name.toLowerCase()));
   if (exists) {
-    setAddError('A customer with this business name already exists.');
+    setAddError('A customer with this company name already exists.');
     return;
   }
   setAddError("");
-  const slug = slugify(data.businessName || data.companyName || 'customer');
+  const slug = slugify(name);
   const newCustomer = { ...data, id: nanoid(), slug };
   const newTicket = {
     id: nanoid(),
@@ -283,8 +282,9 @@ function handleAddCustomer(data) {
     createdAt: new Date().toISOString(),
     item: '',
   };
+  const safeTickets = Array.isArray(tickets) ? tickets : [];
   setCustomers([...customers, newCustomer]);
-  setTickets([...tickets, newTicket]);
+  setTickets([...safeTickets, newTicket]);
   setSelected(newCustomer);
   setTicketMsg('New repair ticket created for this customer!');
   setMode('details');
