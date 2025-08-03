@@ -5,10 +5,19 @@ import { VitePWA } from 'vite-plugin-pwa'
 
 // https://vite.dev/config/
 export default defineConfig({
+  build: {
+    chunkSizeWarningLimit: 1500, // Suppress chunk size warning (in kB)
+  },
+  define: {
+    global: 'window', // Polyfill global for browser
+  },
   plugins: [
     react(),
     VitePWA({
       registerType: 'autoUpdate',
+      workbox: {
+        maximumFileSizeToCacheInBytes: 5 * 1024 * 1024 // 5 MiB
+      },
       manifest: {
         name: 'RepairTracker Pro',
         short_name: 'RepairTracker',

@@ -1,24 +1,79 @@
-import { formatPhoneNumber } from './phoneFormat';
-
-import React, { useState, useEffect } from 'react';
-// ...existing code...
-import { nanoid } from 'nanoid';
-import { generateRmaNumber } from './rmaUtils';
+import React, { useState } from 'react';
 import { useAppStore } from './store';
-import { useNavigate, useParams } from 'react-router-dom';
-import DynamicForm from './DynamicForm';
-import { customerFormSchema } from './formSchemas';
+import { formatPhoneNumber } from './phoneFormat';
+import { generateRmaNumber } from './rmaUtils';
+import { useNavigate } from 'react-router-dom';
 
+function CustomerForm({ customer, onSave, onCancel }) {
+  const [formData, setFormData] = useState(customer);
+  const setCustomers = useAppStore(s => s.setCustomers);
+  const setTickets = useAppStore(s => s.setTickets);
+  const navigate = useNavigate();
 
-function CustomerForm({ onSave, initial = {}, isEdit }) {
-  // Use DynamicForm for schema-driven rendering
+  function handleChange(e) {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  }
+
+  function handleSaveClick() {
+    // Save logic here
+    onSave(formData);
+  }
+
   return (
     <div className="bg-white p-4 rounded shadow">
-      <DynamicForm
-        schema={customerFormSchema}
-        initialValues={initial}
-        onSubmit={onSave}
-      />
+      <div className="mb-4">
+        <label className="block text-sm font-semibold mb-1">Company Name</label>
+        <input
+          type="text"
+          name="companyName"
+          value={formData.companyName}
+          onChange={handleChange}
+          className="w-full border p-2 rounded"
+          required
+        />
+      </div>
+      <div className="mb-4">
+        <label className="block text-sm font-semibold mb-1">Contact Name</label>
+        <input
+          type="text"
+          name="contactName"
+          value={formData.contactName}
+          onChange={handleChange}
+          className="w-full border p-2 rounded"
+          required
+        />
+      </div>
+      <div className="mb-4">
+        <label className="block text-sm font-semibold mb-1">Phone</label>
+        <input
+          type="tel"
+          name="contactPhone"
+          value={formData.contactPhone}
+          onChange={handleChange}
+          className="w-full border p-2 rounded"
+          required
+        />
+      </div>
+      <div className="mb-4">
+        <label className="block text-sm font-semibold mb-1">Email</label>
+        <input
+          type="email"
+          name="contactEmail"
+          value={formData.contactEmail}
+          onChange={handleChange}
+          className="w-full border p-2 rounded"
+          required
+        />
+      </div>
+      <div className="flex justify-end gap-2">
+        <button type="button" onClick={onCancel} className="bg-gray-200 px-4 py-2 rounded">
+          Cancel
+        </button>
+        <button type="button" onClick={handleSaveClick} className="bg-blue-600 text-white px-4 py-2 rounded">
+          Save
+        </button>
+      </div>
     </div>
   );
 }
@@ -222,132 +277,104 @@ function CustomerDetails({ customer, onEdit, onNewTicket, onDeleted }) {
   );
 }
 
-export default function CustomersPage() {
-  const { customerId: customerSlug } = useParams();
-  const [mode, setMode] = useState('search'); // 'search', 'add', 'edit', 'details'
-  const [selected, setSelected] = useState(null);
-  const [editCustomer, setEditCustomer] = useState(null);
-  const customersRaw = useAppStore(s => s.customers);
-  const customers = Array.isArray(customersRaw) ? customersRaw : [];
-  const setCustomers = useAppStore(s => s.setCustomers);
-  const tickets = useAppStore(s => s.tickets);
-  const setTickets = useAppStore(s => s.setTickets);
-  const [ticketMsg, setTicketMsg] = useState("");
-  const [addError, setAddError] = useState("");
-  const navigate = useNavigate();
 
-  // Ensure details view is shown when route is /customers/:slug
-  useEffect(() => {
-    // Only run if customerSlug is present
-    if (customerSlug) {
-      // If customers not loaded yet, wait for them
-      if (!customers || customers.length === 0) return;
-      const found = customers.find(c => c.slug === customerSlug);
-      if (found) {
-        setSelected(found);
-        setMode('details');
-      } else {
-        // If not found, fallback to search mode
-        setSelected(null);
-        setMode('search');
-      }
+function CustomersPage() {
+  const [selectedCustomer, setSelectedCustomer] = useState(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [isAdding, setIsAdding] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const customers = useAppStore(s => s.customers);
+  const setCustomers = useAppStore(s => s.setCustomers);
+
+  function handleSelectCustomer(customer) {
+    setSelectedCustomer(customer);
+    setIsEditing(false);
+    setIsAdding(false);
+  }
+
+  function handleEditCustomer() {
+    setIsEditing(true);
+    setIsAdding(false);
+  }
+
+  function handleAddCustomer() {
+    setIsAdding(true);
+    setIsEditing(false);
+    setSelectedCustomer(null);
+  }
+
+  function handleSaveCustomer(updatedCustomer) {
+    if (isAdding) {
+      // Assign a new id and slug
+      const nanoid = (window.crypto?.randomUUID || (() => Math.random().toString(36).slice(2, 10)));
+      const id = typeof nanoid === 'function' ? nanoid() : nanoid;
+      const slug = (updatedCustomer.companyName || updatedCustomer.businessName || 'customer').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+      const newCustomer = { ...updatedCustomer, id, slug };
+      setCustomers(prev => Array.isArray(prev) ? [...prev, newCustomer] : [newCustomer]);
+      setSelectedCustomer(newCustomer);
+      setIsAdding(false);
+    } else {
+      // Edit existing
+      setCustomers(prev => Array.isArray(prev) ? prev.map(c => c.id === updatedCustomer.id ? { ...c, ...updatedCustomer } : c) : [updatedCustomer]);
+      setSelectedCustomer(updatedCustomer);
+      setIsEditing(false);
     }
-  }, [customerSlug, customers && customers.length]);
+    setRefreshKey(prev => prev + 1);
+  }
+
+  function handleNewTicket() {
+    // New ticket logic here
+  }
 
   function handleCustomerDeleted() {
-    setSelected(null);
-    setMode('search');
+    setSelectedCustomer(null);
+    setRefreshKey(prev => prev + 1);
   }
 
-function handleAddCustomer(data) {
-  // Use companyName from schema-driven form
-  const name = (data.companyName || '').trim();
-  if (!name) {
-    setAddError('Company Name is required.');
-    return;
-  }
-  // Prevent duplicate by companyName (case-insensitive, trimmed)
-  const exists = customers.some(c => ((c.companyName || '').trim().toLowerCase() === name.toLowerCase()));
-  if (exists) {
-    setAddError('A customer with this company name already exists.');
-    return;
-  }
-  setAddError("");
-  const slug = slugify(name);
-  const newCustomer = { ...data, id: nanoid(), slug };
-  const newTicket = {
-    id: nanoid(),
-    customerId: newCustomer.id,
-    status: 'New',
-    createdAt: new Date().toISOString(),
-    item: '',
-  };
-  const safeTickets = Array.isArray(tickets) ? tickets : [];
-  setCustomers([...customers, newCustomer]);
-  setTickets([...safeTickets, newTicket]);
-  setSelected(newCustomer);
-  setTicketMsg('New repair ticket created for this customer!');
-  setMode('details');
-  setTimeout(() => {
-    navigate(`/customers/${newCustomer.slug}/tickets/${newTicket.id}`);
-  }, 0);
-}
-  function slugify(str) {
-  return str
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/(^-|-$)+/g, '');
-  }
-  function handleEditCustomer(data) {
-    setCustomers(customers.map(c => c.id === editCustomer.id ? { ...editCustomer, ...data } : c));
-    setSelected({ ...editCustomer, ...data });
-    setEditCustomer(null);
-    setMode('details');
-  }
-  function handleSelectCustomer(c) {
-    setSelected(c);
-    setMode('details');
-  }
-  function handleEditClick() {
-    setEditCustomer(selected);
-    setMode('edit');
-  }
-  // Import at top
-  // ...existing code...
-  function handleNewTicket() {
-    if (!selected) return;
-    const newTicket = {
-      id: nanoid(),
-      customerId: selected.id,
-      status: 'New',
-      createdAt: new Date().toISOString(),
-      item: '',
-      rmaNumber: generateRmaNumber(),
-    };
-    setTickets([...tickets, newTicket]);
-    setTicketMsg('New repair ticket created for this customer!');
-    navigate(`/customers/${selected.slug}/tickets/${newTicket.id}`);
-  }
+  // Default empty customer for add mode
+  const emptyCustomer = { companyName: '', contactName: '', contactPhone: '', contactEmail: '' };
+
   return (
-    <div className="max-w-3xl mx-auto p-4">
-      <div className="flex gap-4 mb-4">
-        <button onClick={() => { setMode('search'); setSelected(null); setEditCustomer(null); }} className={`px-4 py-2 rounded ${mode === 'search' ? 'bg-blue-600 text-white' : 'bg-white border'}`}>Find Existing</button>
-        <button onClick={() => { setMode('add'); setSelected(null); setEditCustomer(null); }} className={`px-4 py-2 rounded ${mode === 'add' ? 'bg-blue-600 text-white' : 'bg-white border'}`}>Add New</button>
+    <div className="p-4">
+      <div className="flex justify-between items-center mb-4">
+        <h1 className="text-3xl font-bold">Customers</h1>
+        <button
+          className="bg-green-600 text-white px-4 py-2 rounded shadow hover:bg-green-700"
+          onClick={handleAddCustomer}
+        >
+          Add Customer
+        </button>
       </div>
-      {mode === 'search' && <CustomerSearch onSelect={handleSelectCustomer} />}
-      {mode === 'add' && (
-        <>
-          {addError && <div className="mb-2 text-red-600 bg-red-100 border border-red-300 rounded px-2 py-1 text-sm">{addError}</div>}
-          <CustomerForm onSave={handleAddCustomer} />
-        </>
+      <CustomerSearch onSelect={handleSelectCustomer} />
+      {selectedCustomer && !isEditing && !isAdding ? (
+        <CustomerDetails
+          customer={selectedCustomer}
+          onEdit={handleEditCustomer}
+          onNewTicket={handleNewTicket}
+          onDeleted={handleCustomerDeleted}
+        />
+      ) : null}
+      {isEditing && selectedCustomer && (
+        <CustomerForm
+          customer={selectedCustomer}
+          onSave={handleSaveCustomer}
+          onCancel={() => setIsEditing(false)}
+        />
       )}
-      {mode === 'edit' && <CustomerForm onSave={handleEditCustomer} initial={editCustomer} isEdit />}
-      {mode === 'details' && selected && (
-        <>
-          {ticketMsg && <div className="bg-green-100 text-green-800 p-2 mb-2 rounded">{ticketMsg}</div>}
-          <CustomerDetails customer={selected} onEdit={handleEditClick} onNewTicket={handleNewTicket} onDeleted={handleCustomerDeleted} />
-        </>
+      {isAdding && (
+        <CustomerForm
+          customer={emptyCustomer}
+          onSave={handleSaveCustomer}
+          onCancel={() => setIsAdding(false)}
+        />
+      )}
+      {!selectedCustomer && !isEditing && !isAdding && (
+        <div className="text-gray-500 text-center py-10">
+          <p className="text-lg">Select a customer to view details</p>
+        </div>
       )}
     </div>
   );
 }
+
+export default CustomersPage;

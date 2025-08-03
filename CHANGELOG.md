@@ -1,28 +1,17 @@
 # Changelog
 ## [0.3.0] - 2025-07-31
 ### Added
-- Schema-driven forms for customers and tickets, with dynamic rendering from config/schema
-- Admin-editable field groups (schema-ready) for ticket/customer forms and details views
-- Colored grouping boxes for workflow steps in ticket and customer details views
-- Phone number input masking (US/UK) in all forms for live formatting as user types
-- Phone extension fields for all phone numbers (edit and display)
-- Date fields now use proper date pickers in all forms
-- All phone numbers display formatted in details and search views
-- Roadmap and PRD updated to reflect new extensibility, admin, and UI features
 ### Fixed
-- Customer/ticket details views now robustly render all schema fields, including phone formatting and extensions
-- UI polish: consistent field grouping, colored backgrounds, and improved layout
 ### Notes
-- This release completes the schema-driven forms and details card. Ready for merge to main.
 
 
 # Admin Backend TODO
-- User/role management: add admin, staff, and custom roles; restrict sensitive actions (delete, schema changes) to admins
-- Customizable form schemas: allow admin to edit ticket/customer form fields, types, and validation rules
-- RMA number schema: allow client to set RMA number length (8-15), composition (numeric or alphanumeric), and first two fixed letters (prefix); expose settings in admin UI and persist for ticket creation; allow preview of RMA format
-- Ticket status and workflow customization: admin can define custom ticket statuses and allowed transitions
-- Data export/import: CSV/Excel export for tickets/customers, import for bulk onboarding
-- Audit log: track admin actions (deletes, edits, schema changes)
+5. Help/Tooltip Editor (UI for managing context help and tooltips content)
+6. User Management (stub; scaffold user/role management screens)
+
+## Features to Work on in Parallel with Admin Panel
+- Global Ticket List/Search Page (searchable by RMA, company, ticket number)
+- PWA Manifest and Icons (add/optimize manifest and icons for installability and branding)
 - Branding: allow admin to upload logo, set business info, and customize PWA appearance
 - Backup/restore: admin can trigger backup and restore of all data
 - Advanced search/filter: admin UI for searching/filtering tickets and customers by any field

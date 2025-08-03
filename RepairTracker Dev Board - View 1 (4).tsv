@@ -1,0 +1,60 @@
+Title	URL	Assignees	Status
+Persist form schemas	https://github.com/RocketMobster/repairtracker/issues/56	RocketMobster	Backlog:
+Migrate existing data to new schema (if needed)	https://github.com/RocketMobster/repairtracker/issues/9		Backlog:
+Error boundaries for robust error handling	https://github.com/RocketMobster/repairtracker/issues/10		Backlog:
+User authentication and role-based access	https://github.com/RocketMobster/repairtracker/issues/11		Backlog:
+Plugin system for extensibility	https://github.com/RocketMobster/repairtracker/issues/13		Backlog:
+Role/permission management UI	https://github.com/RocketMobster/repairtracker/issues/14		Backlog:
+User management (add/edit users, assign roles)	https://github.com/RocketMobster/repairtracker/issues/15		Backlog:
+Custom statuses and workflow configuration	https://github.com/RocketMobster/repairtracker/issues/16		Backlog:
+Estimate and invoice management	https://github.com/RocketMobster/repairtracker/issues/18		Backlog:
+Audit logs for admin actions	https://github.com/RocketMobster/repairtracker/issues/19		Backlog:
+Responsive, modern UI with Tailwind	https://github.com/RocketMobster/repairtracker/issues/36	RocketMobster	Backlog:
+Unit and Integration Tests	https://github.com/RocketMobster/repairtracker/issues/37	RocketMobster	Backlog:
+CI/CD Setup	https://github.com/RocketMobster/repairtracker/issues/38	RocketMobster	Backlog:
+Deployment (Netlify, Vercel, etc.)	https://github.com/RocketMobster/repairtracker/issues/39	RocketMobster	Backlog:
+Epic: Marketing/Documentation	https://github.com/RocketMobster/repairtracker/issues/59		Backlog:
+Demo Video/Walkthrough	https://github.com/RocketMobster/repairtracker/issues/60		Backlog:
+Customizability Documentation	https://github.com/RocketMobster/repairtracker/issues/61		Backlog:
+Admin Guide	https://github.com/RocketMobster/repairtracker/issues/62		Backlog:
+UI/UX Polish (grouping, colors, navigation)	https://github.com/RocketMobster/repairtracker/issues/57		Backlog:
+End-to-End Testing (forms, admin, Kanban, ticket list)	https://github.com/RocketMobster/repairtracker/issues/58		Backlog:
+Write documentation for customization features	https://github.com/RocketMobster/repairtracker/issues/8	RocketMobster	To Do:
+Tooltips and comprehensive help system (context sensitive)	https://github.com/RocketMobster/repairtracker/issues/32	RocketMobster	To Do:
+PWA manifest and icons	https://github.com/RocketMobster/repairtracker/issues/33	RocketMobster	To Do:
+Offline support and caching	https://github.com/RocketMobster/repairtracker/issues/34	RocketMobster	To Do:
+Accessibility improvements	https://github.com/RocketMobster/repairtracker/issues/35	RocketMobster	To Do:
+Epic: Customizability	https://github.com/RocketMobster/repairtracker/issues/48	RocketMobster	Next Up
+Customer Form Customization (drag/drop, grouping, color, labels)	https://github.com/RocketMobster/repairtracker/issues/49	RocketMobster	Next Up
+Ticket Form Customization	https://github.com/RocketMobster/repairtracker/issues/50	RocketMobster	Next Up
+Save/Load Form Schemas	https://github.com/RocketMobster/repairtracker/issues/51	RocketMobster	Next Up
+Demo/Preview Mode	https://github.com/RocketMobster/repairtracker/issues/52	RocketMobster	Next Up
+Persist schema and custom field data	https://github.com/RocketMobster/repairtracker/issues/7	RocketMobster	Next Up
+Add validation for custom fields	https://github.com/RocketMobster/repairtracker/issues/6	RocketMobster	Next Up
+Main Dashboard View	https://github.com/RocketMobster/repairtracker/issues/43	RocketMobster	Next Up
+Alphabetical customer list with A-Z dividers and sorting	https://github.com/RocketMobster/repairtracker/issues/12	RocketMobster	In Progress:
+Global Ticket List/Search Page	https://github.com/RocketMobster/repairtracker/issues/41	RocketMobster	In Progress:
+Kanban Board for Ticket Prioritization	https://github.com/RocketMobster/repairtracker/issues/42	RocketMobster	In Progress:
+Admin dashboard for managing app features	https://github.com/RocketMobster/repairtracker/issues/17	RocketMobster	In Progress:
+Form Builder Integration	https://github.com/RocketMobster/repairtracker/issues/44	RocketMobster	In Progress:
+Region/Phone Formatting	https://github.com/RocketMobster/repairtracker/issues/45	RocketMobster	In Progress:
+Schema Management & Persistence	https://github.com/RocketMobster/repairtracker/issues/46	RocketMobster	In Progress:
+User Roles/Permissions	https://github.com/RocketMobster/repairtracker/issues/47	RocketMobster	In Progress:
+Admin-editable field groups for forms/details	https://github.com/RocketMobster/repairtracker/issues/26	RocketMobster	In Progress:
+Build admin UI for managing form fields	https://github.com/RocketMobster/repairtracker/issues/3	RocketMobster	In Progress:
+Persist admin schema/config changes	https://github.com/RocketMobster/repairtracker/issues/31	RocketMobster	In Progress:
+Epic: Form Builder Integration	https://github.com/RocketMobster/repairtracker/issues/53	RocketMobster	In Progress:
+Integrate Formio.js Form Builder	https://github.com/RocketMobster/repairtracker/issues/54	RocketMobster	In Progress:
+Connect builder to customer/ticket forms	https://github.com/RocketMobster/repairtracker/issues/55	RocketMobster	In Progress:
+GitHub repository and version control	https://github.com/RocketMobster/repairtracker/issues/40	RocketMobster	In Progress:
+Ticket URL Routing	https://github.com/RocketMobster/repairtracker/issues/20	RocketMobster	Done:
+Customer record management	https://github.com/RocketMobster/repairtracker/issues/21	RocketMobster	Done:
+Phone number input masking & extension	https://github.com/RocketMobster/repairtracker/issues/27	RocketMobster	Done:
+Date picker support for all date fields	https://github.com/RocketMobster/repairtracker/issues/28	RocketMobster	Done:
+Colored grouping boxes for workflow steps	https://github.com/RocketMobster/repairtracker/issues/29	RocketMobster	Done:
+UI/UX polish: consistent grouping/layout	https://github.com/RocketMobster/repairtracker/issues/30	RocketMobster	Done:
+Design schema/config structure for customizable forms	https://github.com/RocketMobster/repairtracker/issues/1	RocketMobster	Done:
+Update ticket form to render dynamically from schema	https://github.com/RocketMobster/repairtracker/issues/5	RocketMobster	Done:
+Update customer form to render dynamically from schema	https://github.com/RocketMobster/repairtracker/issues/4		Done:
+Implement schema/config in codebase	https://github.com/RocketMobster/repairtracker/issues/2		Done:
+RMA Number System	https://github.com/RocketMobster/repairtracker/issues/22	RocketMobster	Done:

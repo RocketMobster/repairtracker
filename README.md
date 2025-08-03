@@ -8,6 +8,16 @@ This project is a React + Vite + Tailwind CSS Progressive Web App (PWA).
 
 1. Install dependencies:
    ```
+
+## Build Chunk Size Warnings
+
+If you see Vite warnings about large chunks ("Some chunks are larger than 500 kB after minification"), you can:
+
+- Refactor your code to use dynamic import() for code-splitting.
+- Use build.rollupOptions.output.manualChunks in vite.config.js for custom chunking.
+- Suppress the warning by increasing build.chunkSizeWarningLimit in vite.config.js.
+
+For most apps, the warning is informational and does not affect functionality. For advanced optimization, consider dynamic imports or manual chunking.
    npm install
    ```
 2. Start the development server:

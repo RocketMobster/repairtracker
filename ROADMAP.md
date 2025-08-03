@@ -15,20 +15,32 @@ RepairTracker Pro is a React + Vite + Tailwind CSS Progressive Web App (PWA) for
 - [x] Add vite-plugin-pwa for PWA support
 
 ### 2. Core Features: Customer & Ticket Management
-### 3. Core Lists & Boards
-- [ ] Searchable, alphabetized customer list page
+
+### 3. Core Lists & Boards (Next Steps)
+1. [ ] Implement the "Searchable, alphabetized customer list page"
     - Dedicated page listing all customers in alphabetical order with search and filter options.
-- [ ] Global ticket list/search page
+2. [ ] Global ticket list/search page
     - Page listing all tickets (active and closed), searchable by RMA number, company name, or ticket number.
-- [ ] Kanban board for ticket prioritization
+3. [ ] Kanban board for ticket prioritization
     - Drag-and-drop Kanban board for ticket workflow, status management, and prioritization. Enterprise-level feature for real-time ticket management.
+
+> **Note:** The admin backend implementation should start in parallel with these three steps, as it will enable advanced configuration and extensibility for the features above.
+
 
 
 
 ### 3. Advanced Features
 
-- [ ] Admin-editable field groups for ticket/customer forms and details views
+    - Add tooltips throughout the UI for key fields, buttons, and workflows.
+    - Implement a context-sensitive help system to guide users based on their current view or action.
+
     - Allow clients to define custom groupings of fields (with label, color, and order) from the admin backend for both forms and details views. This enables highly flexible, industry-specific UI layouts.
+
+- [ ] **Custom Admin Form Builder Epic**
+    - Build a fully custom, React 19-compatible drag-and-drop form builder for admin users.
+    - Features: add/remove/reorder fields, edit field properties, live preview, JSON schema export/import, direct update of user-facing forms.
+    - Replace legacy SurveyJS/Formio.js demos with this new builder.
+    - Track as an Epic with sprints for UI, drag-and-drop, field editing, preview, and integration.
 
 - [ ] Usage logs for admin backend
     - Secure log files are generated whenever a customer is entered (with a repair ticket/RMA number), when additional tickets/RMA numbers are added for existing customers, when customers or tickets are deleted, and when tickets or customers are edited.

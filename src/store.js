@@ -20,6 +20,8 @@ export const useAppStore = create(
       setStatuses: (statuses) => set({ statuses }),
       setPlugins: (plugins) => set({ plugins }),
       setRolePermissions: (rolePermissions) => set({ rolePermissions }),
+      region: 'US',
+      setRegion: (region) => set({ region }),
     }),
     {
       name: 'repair-tracker-store',

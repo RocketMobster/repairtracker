@@ -8,6 +8,11 @@ import TicketDetails from './TicketDetails';
 
 
 import CustomersPage from './CustomersPage';
+import CustomersListPage from './CustomersListPage';
+import AdminDashboard from './AdminDashboard';
+import FormBuilderDemo from './FormBuilderDemo';
+// import removed
+import ReactFormBuilderDemo from './ReactFormBuilderDemo';
 import { useAppStore } from './store';
 
 function Dashboard() {
@@ -79,7 +84,10 @@ function App() {
       <nav className="flex gap-4 p-4 bg-white shadow mb-6 items-center">
         <Link to="/" className="font-bold text-blue-700">Dashboard</Link>
         {currentUser && <Link to="/tickets" className="text-blue-700">Tickets</Link>}
-        {currentUser && <Link to="/customers" className="text-blue-700">Customers</Link>}
+        {currentUser && <Link to="/customers/list" className="text-blue-700">Customers</Link>}
+        <Link to="/formbuilder-demo" className="text-blue-700">Form Builder Demo</Link>
+        {/* SurveyJS Demo link removed */}
+        {currentUser?.role === 'Admin' && <Link to="/react-formbuilder-demo" className="text-blue-700">React FormBuilder Demo</Link>}
         {currentUser?.role === 'Admin' && <Link to="/admin" className="text-blue-700">Admin</Link>}
         <div className="ml-auto flex items-center gap-2">
           {currentUser ? (
@@ -95,10 +103,13 @@ function App() {
       <Routes>
         <Route path="/" element={<Dashboard />} />
         <Route path="/tickets" element={currentUser ? <Tickets /> : <Navigate to="/login" />} />
-        <Route path="/customers" element={currentUser ? <CustomersPage /> : <Navigate to="/login" />} />
-        <Route path="/customers/:customerId" element={currentUser ? <CustomersPage /> : <Navigate to="/login" />} />
+        <Route path="/customers" element={currentUser ? <CustomersListPage /> : <Navigate to="/login" />} />
+        <Route path="/customers/:customerId" element={currentUser ? <CustomersListPage /> : <Navigate to="/login" />} />
         <Route path="/customers/:customerId/tickets/:ticketId" element={currentUser ? <TicketDetails /> : <Navigate to="/login" />} />
-        <Route path="/admin" element={currentUser?.role === 'Admin' ? <Admin /> : <Navigate to="/login" />} />
+        <Route path="/formbuilder-demo" element={<FormBuilderDemo />} />
+        {/* SurveyJS Demo route removed */}
+        <Route path="/react-formbuilder-demo" element={currentUser?.role === 'Admin' ? <ReactFormBuilderDemo /> : <Navigate to="/login" />} />
+        <Route path="/admin" element={currentUser?.role === 'Admin' ? <AdminDashboard /> : <Navigate to="/login" />} />
         <Route path="/login" element={!currentUser ? <Login /> : <Navigate to="/" />} />
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
