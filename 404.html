@@ -1,6 +1,18 @@
 <!doctype html>
 <html lang="en">
   <head>
+    <script>
+      // SPA redirect for GitHub Pages
+      // If not at /repairtracker/ and not at /repairtracker/404.html, redirect to /repairtracker/ with the original path as hash
+      if (
+        location.pathname.startsWith('/repairtracker/') &&
+        !location.pathname.endsWith('/404.html') &&
+        location.pathname !== '/repairtracker/'
+      ) {
+        var newUrl = '/repairtracker/#' + location.pathname.replace('/repairtracker/', '') + location.search + location.hash;
+        location.replace(newUrl);
+      }
+    </script>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/repairtracker/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -9,6 +21,7 @@
     <link rel="stylesheet" crossorigin href="/repairtracker/assets/index-Ch-w4o-M.css">
   <link rel="manifest" href="/repairtracker/manifest.webmanifest"><script id="vite-plugin-pwa:register-sw" src="/repairtracker/registerSW.js"></script></head>
   <body>
-    <div id="root"></div>
+    <div id="root"></div>
+
   </body>
 </html>
