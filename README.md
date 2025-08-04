@@ -1,5 +1,3 @@
-
-
 # RMA Repair Tracker v0.3.0
 
 This project is a React + Vite + Tailwind CSS Progressive Web App (PWA).
@@ -8,16 +6,6 @@ This project is a React + Vite + Tailwind CSS Progressive Web App (PWA).
 
 1. Install dependencies:
    ```
-
-## Build Chunk Size Warnings
-
-If you see Vite warnings about large chunks ("Some chunks are larger than 500 kB after minification"), you can:
-
-- Refactor your code to use dynamic import() for code-splitting.
-- Use build.rollupOptions.output.manualChunks in vite.config.js for custom chunking.
-- Suppress the warning by increasing build.chunkSizeWarningLimit in vite.config.js.
-
-For most apps, the warning is informational and does not affect functionality. For advanced optimization, consider dynamic imports or manual chunking.
    npm install
    ```
 2. Start the development server:
@@ -40,3 +28,25 @@ For most apps, the warning is informational and does not affect functionality. F
 
 ## Roadmap & Documentation
 - See `ROADMAP.md` and `repairtracker_prd.md` for full feature set, admin extensibility, and future plans.
+
+## Modular Form Builder Usage
+
+The admin form builder is fully modular and extensible. To add a new field type, update `src/form-builder/fieldTypes.js` and add rendering logic in `src/form-builder/FormBuilder.jsx`.
+
+### Example Field Config
+```
+{
+  type: 'text',
+  label: 'Text',
+  config: {
+    required: false,
+    placeholder: '',
+    minLength: 0,
+    maxLength: 255,
+    pattern: '',
+    errorMessage: '',
+  }
+}
+```
+
+See `src/form-builder/README.md` for full data model and extensibility details.

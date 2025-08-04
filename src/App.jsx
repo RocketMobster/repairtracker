@@ -13,6 +13,7 @@ import AdminDashboard from './AdminDashboard';
 import FormBuilderDemo from './FormBuilderDemo';
 // import removed
 import ReactFormBuilderDemo from './ReactFormBuilderDemo';
+import CustomFormBuilderDemo from './CustomFormBuilderDemo';
 import { useAppStore } from './store';
 
 function Dashboard() {
@@ -88,6 +89,7 @@ function App() {
         <Link to="/formbuilder-demo" className="text-blue-700">Form Builder Demo</Link>
         {/* SurveyJS Demo link removed */}
         {currentUser?.role === 'Admin' && <Link to="/react-formbuilder-demo" className="text-blue-700">React FormBuilder Demo</Link>}
+        {currentUser?.role === 'Admin' && <Link to="/custom-formbuilder-demo" className="text-blue-700">Custom Form Builder Demo</Link>}
         {currentUser?.role === 'Admin' && <Link to="/admin" className="text-blue-700">Admin</Link>}
         <div className="ml-auto flex items-center gap-2">
           {currentUser ? (
@@ -109,6 +111,7 @@ function App() {
         <Route path="/formbuilder-demo" element={<FormBuilderDemo />} />
         {/* SurveyJS Demo route removed */}
         <Route path="/react-formbuilder-demo" element={currentUser?.role === 'Admin' ? <ReactFormBuilderDemo /> : <Navigate to="/login" />} />
+        <Route path="/custom-formbuilder-demo" element={currentUser?.role === 'Admin' ? <CustomFormBuilderDemo /> : <Navigate to="/login" />} />
         <Route path="/admin" element={currentUser?.role === 'Admin' ? <AdminDashboard /> : <Navigate to="/login" />} />
         <Route path="/login" element={!currentUser ? <Login /> : <Navigate to="/" />} />
         <Route path="*" element={<Navigate to="/" />} />
