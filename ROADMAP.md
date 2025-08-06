@@ -37,8 +37,9 @@ RepairTracker Pro is a React + Vite + Tailwind CSS Progressive Web App (PWA) for
     - Allow clients to define custom groupings of fields (with label, color, and order) from the admin backend for both forms and details views. This enables highly flexible, industry-specific UI layouts.
 
 - [ ] **Custom Admin Form Builder Epic**
-    - Build a fully custom, React 19-compatible drag-and-drop form builder for admin users.
+    - Build a fully custom, React 19-compatible drag-and-drop form builder for admin users. **(IN PROGRESS)**
     - Features: add/remove/reorder fields, edit field properties, live preview, JSON schema export/import, direct update of user-facing forms.
+    - Animated drag overlay for field reordering, notification system for add/remove, accessibility improvements, and UI polish completed.
     - Replace legacy SurveyJS/Formio.js demos with this new builder.
     - Track as an Epic with sprints for UI, drag-and-drop, field editing, preview, and integration.
 

@@ -1,4 +1,18 @@
 # Changelog
+## [0.3.1] - 2025-08-06
+### Added
+- Custom admin form builder: drag-and-drop field management, animated drag overlay, field addition/removal, and notification system
+- Animated drag overlay for field reordering (shows field label/type, color feedback)
+- Notification system for field add/remove actions
+- Accessibility improvements (labels, placeholders, keyboard navigation)
+- UI polish: drag handle position, color harmony, mobile support, SPA routing for GitHub Pages
+### Fixed
+- Drag handle pointer events and accessibility issues
+- Notification skipping on rapid add/remove
+- Drag-and-drop not working on desktop (added PointerSensor)
+### Notes
+- All form builder UI/UX enhancements are now live in the feature/custom-form-builder branch
+# Changelog
 ## [0.3.0] - 2025-07-31
 ### Added
 ### Fixed

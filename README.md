@@ -19,6 +19,10 @@ This project is a React + Vite + Tailwind CSS Progressive Web App (PWA).
 - PWA support
 - Schema-driven forms for customers and tickets (dynamic rendering from config/schema)
 - Admin-editable field groups (schema-ready) for ticket/customer forms and details views
+- **Custom admin form builder:** drag-and-drop field management, animated drag overlay, field addition/removal, and notification system
+- Animated drag overlay for field reordering (with field label and color feedback)
+- Notification system for field add/remove actions
+- Accessibility improvements (labels, placeholders, keyboard navigation)
 - Colored grouping boxes for workflow steps in ticket and customer details views
 - Phone number input masking (US/UK) in all forms for live formatting as user types
 - Phone extension fields for all phone numbers (edit and display)
@@ -28,6 +32,7 @@ This project is a React + Vite + Tailwind CSS Progressive Web App (PWA).
 
 ## Roadmap & Documentation
 - See `ROADMAP.md` and `repairtracker_prd.md` for full feature set, admin extensibility, and future plans.
+- See CHANGELOG.md for all recent updates and features.
 
 ## Modular Form Builder Usage
 
