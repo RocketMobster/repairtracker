@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useFormBuilderStore } from './store';
 import { FieldList } from './fields';
+import FieldConfigPanel from '../components/FieldConfigPanel';
 
 export default function FormBuilder() {
   // Zustand store for builder state
@@ -11,9 +12,13 @@ export default function FormBuilder() {
   const [fieldValues, setFieldValues] = React.useState({});
   const [fieldErrors, setFieldErrors] = React.useState({});
 
+  // State for config panel
+  const [configPanelOpen, setConfigPanelOpen] = useState(false);
+  const [editingField, setEditingField] = useState(null);
+
   function validate(field, value) {
     const { type, config = {} } = field;
-    if (config.required && !value) {
+    if (config.required && (value === '' || value === undefined || value === null)) {
       return config.errorMessage || 'This field is required.';
     }
     if (type === 'text' || type === 'textarea') {
@@ -27,6 +32,20 @@ export default function FormBuilder() {
         return config.errorMessage || 'Invalid format.';
       }
     }
+    if (type === 'number') {
+      if (value !== '' && value !== undefined && value !== null) {
+        const num = Number(value);
+        if (isNaN(num)) {
+          return config.errorMessage || 'Must be a number.';
+        }
+        if (config.min !== undefined && num < config.min) {
+          return config.errorMessage || `Minimum value is ${config.min}.`;
+        }
+        if (config.max !== undefined && num > config.max) {
+          return config.errorMessage || `Maximum value is ${config.max}.`;
+        }
+      }
+    }
     return '';
   }
 
@@ -36,10 +55,45 @@ export default function FormBuilder() {
     setFieldErrors(prev => ({ ...prev, [fieldId]: validate(field, value) }));
   }
 
+  // Open config panel for a field
+  function handleEditField(field) {
+    setEditingField(field);
+    setConfigPanelOpen(true);
+  }
+
+  // Save field config changes
+  function handleSaveConfig(updatedField) {
+    // Use config from updatedField directly
+    const mergedField = {
+      ...fields.find(f => f.id === updatedField.id),
+      ...updatedField,
+      config: { ...updatedField.config },
+    };
+    updateField(updatedField.id, mergedField);
+    setConfigPanelOpen(false);
+    setEditingField(null);
+  }
+
+  // Cancel editing
+  function handleCancelConfig() {
+    setConfigPanelOpen(false);
+    setEditingField(null);
+  }
+
+  // Update field as user edits in panel
+  function handleConfigChange(updatedField) {
+    setEditingField(updatedField);
+  }
+
   return (
-    <div className="p-4 bg-white rounded shadow">
+    <div className="p-4 bg-white rounded shadow max-w-full mx-auto">
       <h2 className="text-xl font-bold mb-2">Form Builder</h2>
-      <FieldList fields={fields} onRemove={removeField} onUpdate={updateField} />
+      <FieldList
+        fields={fields}
+        onRemove={removeField}
+        onUpdate={updateField}
+        onEdit={handleEditField}
+      />
       <button onClick={() => addField()} className="mt-4 px-4 py-2 bg-blue-600 text-white rounded">Add Field</button>
       <hr className="my-6" />
       <h3 className="text-lg font-semibold mb-2">Live Preview</h3>
@@ -58,7 +112,7 @@ export default function FormBuilder() {
                     type="text"
                     placeholder={config.placeholder}
                     required={config.required}
-                    className={`w-full border rounded px-2 py-1 ${error ? 'border-red-500' : ''}`}
+                    className={`w-full border rounded px-3 py-2 text-base ${error ? 'border-red-500' : ''}`}
                     value={value}
                     onChange={e => handleChange(key, e.target.value)}
                   />
@@ -75,7 +129,7 @@ export default function FormBuilder() {
                     required={config.required}
                     minLength={config.minLength}
                     maxLength={config.maxLength}
-                    className={`w-full border rounded px-2 py-1 ${error ? 'border-red-500' : ''}`}
+                    className={`w-full border rounded px-3 py-2 text-base ${error ? 'border-red-500' : ''}`}
                     value={value}
                     onChange={e => handleChange(key, e.target.value)}
                   />
@@ -86,8 +140,18 @@ export default function FormBuilder() {
             if (type === 'number') {
               return (
                 <div key={key} className="mb-4">
-                  <label className="block font-medium mb-1">{label || `Field ${idx + 1}`}{config.required ? ' *' : ''}</label>
-                  <input type="number" placeholder={config.placeholder} required={config.required} min={config.min} max={config.max} className="w-full border rounded px-2 py-1" />
+                  <label className="block font-medium mb-1">{label || `Number ${idx + 1}`}{config.required ? ' *' : ''}</label>
+                  <input
+                    type="number"
+                    placeholder={config.placeholder}
+                    required={config.required}
+                    min={config.min}
+                    max={config.max}
+                    className={`w-full border rounded px-3 py-2 text-base ${error ? 'border-red-500' : ''}`}
+                    value={value}
+                    onChange={e => handleChange(key, e.target.value)}
+                  />
+                  {error && <div className="text-red-600 text-sm mt-1">{error}</div>}
                 </div>
               );
             }
@@ -95,7 +159,7 @@ export default function FormBuilder() {
               return (
                 <div key={key} className="mb-4">
                   <label className="block font-medium mb-1">{label || `Field ${idx + 1}`}{config.required ? ' *' : ''}</label>
-                  <input type="date" required={config.required} className="w-full border rounded px-2 py-1" />
+                  <input type="date" required={config.required} className="w-full border rounded px-3 py-2 text-base" />
                 </div>
               );
             }
@@ -104,7 +168,7 @@ export default function FormBuilder() {
               return (
                 <div key={key} className="mb-4">
                   <label className="block font-medium mb-1">{label || `Field ${idx + 1}`}{config.required ? ' *' : ''}</label>
-                  <select required={config.required} className="w-full border rounded px-2 py-1">
+                  <select required={config.required} className="w-full border rounded px-3 py-2 text-base">
                     <option value="">Select...</option>
                     {options.map((opt, i) => <option key={i} value={opt}>{opt}</option>)}
                   </select>
@@ -138,6 +202,14 @@ export default function FormBuilder() {
           })}
         </form>
       </div>
+      {/* Field Config Side Panel */}
+      <FieldConfigPanel
+        isOpen={configPanelOpen}
+        field={editingField}
+        onSave={handleSaveConfig}
+        onCancel={handleCancelConfig}
+        onChange={handleConfigChange}
+      />
     </div>
   );
 }

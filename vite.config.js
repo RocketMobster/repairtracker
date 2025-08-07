@@ -26,20 +26,21 @@ export default defineConfig({
         theme_color: '#2563eb',
         background_color: '#f1f5f9',
         display: 'standalone',
-        start_url: '/',
+        start_url: '/repairtracker/',
+        scope: '/repairtracker/',
         icons: [
           {
-            src: '/icon-192x192.png',
+            src: '/repairtracker/icon-192x192.png',
             sizes: '192x192',
             type: 'image/png',
           },
           {
-            src: '/icon-512x512.png',
+            src: '/repairtracker/icon-512x512.png',
             sizes: '512x512',
             type: 'image/png',
           },
           {
-            src: '/icon-512x512.png',
+            src: '/repairtracker/icon-512x512.png',
             sizes: '512x512',
             type: 'image/png',
             purpose: 'any maskable',

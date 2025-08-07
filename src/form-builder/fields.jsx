@@ -9,7 +9,7 @@ const FIELD_TYPE_ICONS = {
   checkbox: '☑️',
   radio: '🔘',
 };
-export function SortableField({ id, field, idx, activeId, onRemove, onUpdate, setActiveId, isDropTarget, nodeRef = { current: null }, highlight }) {
+export function SortableField({ id, field, idx, activeId, onRemove, onUpdate, setActiveId, isDropTarget, nodeRef = { current: null }, highlight, onEdit }) {
   const {
     attributes,
     listeners,
@@ -31,14 +31,15 @@ export function SortableField({ id, field, idx, activeId, onRemove, onUpdate, se
     <div
       ref={combinedRef}
       {...attributes}
-      className={`mb-2 p-2 border rounded flex flex-col gap-2 bg-white transition-all duration-300 ease-in-out opacity-100 translate-y-0 ${isDragging ? 'ring-2 ring-blue-400' : ''} ${isDropTarget ? 'ring-4 ring-blue-300 bg-blue-50' : ''} touch-manipulation${highlight ? ' field-highlight' : ''}`}
+      className={`mb-2 p-2 border rounded flex flex-col bg-white transition-all duration-300 ease-in-out opacity-100 translate-y-0 relative ${isDragging ? 'ring-2 ring-blue-400' : ''} ${isDropTarget ? 'ring-4 ring-blue-300 bg-blue-50' : ''} touch-manipulation${highlight ? ' field-highlight' : ''}`}
       style={{
         cursor: isDragging ? 'grabbing' : 'grab',
         transition: `${transition}, opacity 0.3s, transform 0.3s`,
         touchAction: 'manipulation',
+        minHeight: '3.5rem',
       }}
     >
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 pr-32 min-h-[2.5rem]">
         {/* Drag handle with tooltip - now first/top-left */}
         <span
           {...listeners}
@@ -53,7 +54,7 @@ export function SortableField({ id, field, idx, activeId, onRemove, onUpdate, se
             alignItems: 'center',
             justifyContent: 'center',
             touchAction: 'manipulation',
-            background: '#fffde7', // lighter yellow
+            background: '#fffde7',
             border: '2px solid #fbbf24',
             zIndex: 10,
           }}
@@ -76,154 +77,25 @@ export function SortableField({ id, field, idx, activeId, onRemove, onUpdate, se
         <span className="text-xl mr-1" title={field.type} aria-label={field.type}>
           {FIELD_TYPE_ICONS[field.type] || '❓'}
         </span>
-        <select
-          value={field.type}
-          onChange={e => onUpdate(field.id, { type: e.target.value })}
-          className="border rounded px-2 py-1"
-        >
-          {FIELD_TYPES.map(ft => (
-            <option key={ft.type} value={ft.type}>{ft.label}</option>
-          ))}
-        </select>
-        {/* Field label editor */}
-        <input
-          type="text"
-          value={field.label}
-          onChange={e => onUpdate(field.id, { label: e.target.value })}
-          placeholder={`Field ${idx + 1}`}
-          className="flex-1 border rounded px-2 py-1 ml-2"
-        />
-        <button onClick={() => onRemove(field.id)} className="ml-2 px-2 py-1 bg-red-500 text-white rounded">Remove</button>
+        <span className="font-medium text-gray-700 mr-2">
+          {(() => {
+            const typeLabel = field.type === 'text' ? 'Text Field' :
+              field.type === 'textarea' ? 'Text Area' :
+              field.type === 'number' ? 'Number Field' :
+              field.type === 'date' ? 'Date Field' :
+              field.type === 'dropdown' ? 'Dropdown' :
+              field.type === 'checkbox' ? 'Checkbox' :
+              field.type === 'radio' ? 'Radio' :
+              'Field';
+            return `${typeLabel} ${idx + 1}`;
+          })()}
+        </span>
       </div>
-      {/* Field config options */}
-      <div className="flex flex-wrap items-center gap-2">
-        <label className="flex items-center gap-1">
-          <input
-            type="checkbox"
-            checked={field.config?.required || false}
-            onChange={e => onUpdate(field.id, { config: { ...field.config, required: e.target.checked } })}
-          />
-          Required
-        </label>
-        {(field.type === 'text' || field.type === 'textarea' || field.type === 'number') && (
-          <input
-            type="text"
-            value={field.config?.placeholder || ''}
-            onChange={e => onUpdate(field.id, { config: { ...field.config, placeholder: e.target.value } })}
-            placeholder="Placeholder"
-            className="border rounded px-2 py-1"
-          />
-        )}
-        {(field.type === 'text' || field.type === 'textarea') && (
-          <>
-            <input
-              type="number"
-              value={field.config?.minLength || ''}
-              onChange={e => onUpdate(field.id, { config: { ...field.config, minLength: Number(e.target.value) } })}
-              placeholder="Min Length"
-              className="border rounded px-2 py-1 w-24"
-            />
-            <input
-              type="number"
-              value={field.config?.maxLength || ''}
-              onChange={e => onUpdate(field.id, { config: { ...field.config, maxLength: Number(e.target.value) } })}
-              placeholder="Max Length"
-              className="border rounded px-2 py-1 w-24"
-            />
-            <input
-              type="text"
-              value={field.config?.pattern || ''}
-              onChange={e => onUpdate(field.id, { config: { ...field.config, pattern: e.target.value } })}
-              placeholder="Pattern (regex)"
-              className="border rounded px-2 py-1 w-32"
-            />
-            <input
-              type="text"
-              value={field.config?.errorMessage || ''}
-              onChange={e => onUpdate(field.id, { config: { ...field.config, errorMessage: e.target.value } })}
-              placeholder="Error Message"
-              className="border rounded px-2 py-1 w-48"
-            />
-          </>
-        )}
-        {field.type === 'number' && (
-          <>
-            <input
-              type="number"
-              value={field.config?.min || ''}
-              onChange={e => onUpdate(field.id, { config: { ...field.config, min: e.target.value } })}
-              placeholder="Min"
-              className="border rounded px-2 py-1 w-20"
-            />
-            <input
-              type="number"
-              value={field.config?.max || ''}
-              onChange={e => onUpdate(field.id, { config: { ...field.config, max: e.target.value } })}
-              placeholder="Max"
-              className="border rounded px-2 py-1 w-20"
-            />
-            <input
-              type="text"
-              value={field.config?.errorMessage || ''}
-              onChange={e => onUpdate(field.id, { config: { ...field.config, errorMessage: e.target.value } })}
-              placeholder="Error Message"
-              className="border rounded px-2 py-1 w-48"
-            />
-          </>
-        )}
-        {field.type === 'date' && (
-          <>
-            <input
-              type="date"
-              value={field.config?.min || ''}
-              onChange={e => onUpdate(field.id, { config: { ...field.config, min: e.target.value } })}
-              placeholder="Min Date"
-              className="border rounded px-2 py-1 w-32"
-            />
-            <input
-              type="date"
-              value={field.config?.max || ''}
-              onChange={e => onUpdate(field.id, { config: { ...field.config, max: e.target.value } })}
-              placeholder="Max Date"
-              className="border rounded px-2 py-1 w-32"
-            />
-            <input
-              type="text"
-              value={field.config?.errorMessage || ''}
-              onChange={e => onUpdate(field.id, { config: { ...field.config, errorMessage: e.target.value } })}
-              placeholder="Error Message"
-              className="border rounded px-2 py-1 w-48"
-            />
-          </>
-        )}
-        {(field.type === 'dropdown' || field.type === 'radio') && (
-          <>
-            <input
-              type="text"
-              value={field.config?.options || ''}
-              onChange={e => onUpdate(field.id, { config: { ...field.config, options: e.target.value } })}
-              placeholder="Options (comma separated)"
-              className="border rounded px-2 py-1"
-            />
-            <input
-              type="text"
-              value={field.config?.errorMessage || ''}
-              onChange={e => onUpdate(field.id, { config: { ...field.config, errorMessage: e.target.value } })}
-              placeholder="Error Message"
-              className="border rounded px-2 py-1 w-48"
-            />
-          </>
-        )}
-        {field.type === 'checkbox' && (
-          <input
-            type="text"
-            value={field.config?.errorMessage || ''}
-            onChange={e => onUpdate(field.id, { config: { ...field.config, errorMessage: e.target.value } })}
-            placeholder="Error Message"
-            className="border rounded px-2 py-1 w-48"
-          />
-        )}
+      <div className="absolute right-4 bottom-2 flex gap-2">
+        <button onClick={() => onRemove(field.id)} className="px-2 py-1 bg-red-500 text-white rounded">Remove</button>
+        <button onClick={() => onEdit && onEdit(field)} className="px-2 py-1 bg-green-500 text-white rounded" title="Edit field config">Edit</button>
       </div>
+      {/* All field config is now handled in the side panel */}
     </div>
   );
 }
@@ -238,7 +110,7 @@ import { DragOverlay } from '@dnd-kit/core';
 import { useFormBuilderStore } from './store';
 import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable';
 
-export function FieldList({ fields, onRemove, onUpdate }) {
+export function FieldList({ fields, onRemove, onUpdate, onEdit }) {
   // Add sensors for both pointer and touch
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -286,6 +158,10 @@ export function FieldList({ fields, onRemove, onUpdate }) {
     setOverId(null);
   }
 
+  // Helper to call onEdit when edit button is clicked
+  function handleEdit(field) {
+    if (onEdit) onEdit(field);
+  }
   return (
     <div
       style={{ touchAction: activeId ? 'none' : 'auto' }}
@@ -326,6 +202,7 @@ export function FieldList({ fields, onRemove, onUpdate }) {
                       isDropTarget={overId === field.id && activeId !== field.id}
                       nodeRef={nodeRef}
                       highlight={highlight}
+                      onEdit={onEdit}
                     />
                   </CSSTransition>
                 );

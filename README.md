@@ -30,9 +30,28 @@ This project is a React + Vite + Tailwind CSS Progressive Web App (PWA).
 - All phone numbers display formatted in details and search views
 - Modern, responsive UI with Tailwind
 
-## Roadmap & Documentation
-- See `ROADMAP.md` and `repairtracker_prd.md` for full feature set, admin extensibility, and future plans.
-- See CHANGELOG.md for all recent updates and features.
+
+## Roadmap
+
+### Current & Upcoming Priorities
+
+1. **Kanban Board for Ticket Prioritization**
+   - Visual ticket management, drag-and-drop prioritization, and workflow columns.
+2. **Global Ticket List/Search Page**
+   - Unified ticket search, filtering, and quick actions.
+3. **Form Builder Integration**
+   - Connect custom form builder output to customer/ticket forms and schema persistence.
+4. **Admin UI for Managing Form Fields**
+   - Advanced admin controls for field groups, schema editing, and config persistence.
+5. **Responsive/Mobile-Friendly Builder UI**
+   - Ensure builder and admin UI work seamlessly on all devices.
+6. **Epic: Two-Column, Row-Based Layouts**
+   - Add support for row/column layouts in the form builder, including drag-and-drop between columns, row management, and responsive rendering.
+7. **Advanced Builder Features**
+   - Conditional logic, field grouping, undo/redo, and more.
+
+See `ROADMAP.md` and `repairtracker_prd.md` for full feature set, admin extensibility, and future plans.
+See CHANGELOG.md for all recent updates and features.
 
 ## Modular Form Builder Usage
 
