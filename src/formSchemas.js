@@ -136,6 +136,22 @@ export const customerFormSchema = [
 
 export const ticketFormSchema = [
   {
+    name: "highPriority",
+    label: "High Priority",
+    type: "checkbox",
+    required: false,
+    order: 1,
+    help: "Mark this ticket as high priority. High priority tickets are highlighted in the Kanban board."
+  },
+  {
+    name: "assignedTo",
+    label: "Assigned Technician",
+    type: "text", // Change to select when user/tech management is ready
+    required: false,
+    order: 1.5,
+    help: "Technician assigned to this ticket."
+  },
+  {
     name: "status",
     label: "Status",
     type: "select",

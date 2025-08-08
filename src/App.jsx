@@ -2,11 +2,7 @@
 import React from 'react';
 import { Routes, Route, Link, Navigate } from 'react-router-dom';
 import TicketDetails from './TicketDetails';
-
-
-
-
-
+import KanbanBoard from './components/KanbanBoard';
 import CustomersPage from './CustomersPage';
 import { useAppStore } from './store';
 
@@ -14,7 +10,12 @@ function Dashboard() {
   return <div className="p-8"><h2 className="text-2xl font-bold mb-2">Dashboard</h2><p>Overview and widgets go here.</p></div>;
 }
 function Tickets() {
-  return <div className="p-8"><h2 className="text-2xl font-bold mb-2">Tickets</h2><p>Ticket management board goes here.</p></div>;
+  return (
+    <div className="p-4">
+      <h2 className="text-2xl font-bold mb-4">Tickets</h2>
+      <KanbanBoard />
+    </div>
+  );
 }
 
 // CustomersPage is now the main customers UI

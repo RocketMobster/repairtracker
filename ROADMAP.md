@@ -1,3 +1,23 @@
+## Admin Panel TODOs (Planned & In Progress)
+
+- [x] Kanban column label customization (allow admin to rename columns)
+- [x] Kanban column actions: add/remove/reorder columns, WIP limits, admin-only
+- [x] Safety net for column delete: tickets moved to Holding column, cannot delete Holding with tickets
+- [x] Drag-and-drop: robust, smooth, cross-column, drop indicators, stable hooks
+- [ ] Plugin system for extensibility (widgets, dashboard, integrations)
+- [ ] Role/permission management UI
+- [ ] User management (add/edit users, assign roles)
+- [ ] Custom statuses and workflow configuration
+- [ ] Admin UI for managing form fields and templates
+- [ ] Dashboard customization (widgets, plugin support, layout)
+- [ ] Audit logs for admin actions
+- [ ] Advanced builder features (conditional logic, grouping, undo/redo, etc.)
+- [ ] Accessibility and help system improvements
+- [ ] Documentation and admin guide links
+- [ ] Field grouping and section management
+- [ ] Ticket form and workflow customization
+- [ ] UI/UX polish for admin tools
+
 # RepairTracker Pro – Project Roadmap
 
 ## Overview

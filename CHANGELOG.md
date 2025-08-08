@@ -1,4 +1,24 @@
 # Changelog
+## [0.4.0] - 2025-08-08
+### Added
+- Kanban column actions: add, remove, rename, reorder columns (admin only)
+- WIP limits: set and enforce per column, editable by admin
+- Safety net: tickets from deleted columns are moved to a special 'Holding' column (cannot be deleted if not empty)
+- Visual highlight and notification for Holding column and ticket moves
+- Drag-and-drop: robust, smooth, and cross-column ticket movement with drop indicators
+- Admin-only controls for column management
+- Dismissible notifications for ticket moves and blocked actions
+
+### Fixed
+- Drag-and-drop bugs: stable hooks, SortableContext, and ticket order
+- Prevented ticket loss on column delete
+- Improved Kanban UX and accessibility
+
+### Notes
+- This release completes the core Kanban admin/UX overhaul and safety features. Ready for further admin and bulk actions.
+
+
+# Changelog
 ## [0.3.0] - 2025-07-31
 ### Added
 - Schema-driven forms for customers and tickets, with dynamic rendering from config/schema
