@@ -1,5 +1,29 @@
 # Changelog
 
+## [0.9.0] - 2025-09-10
+### Added
+- Blocking Relationship System:
+  - Added "blocks" and "blockedBy" relationship types to ticket relationships
+  - Implemented visual indicators for blocked and blocking tickets in Kanban board
+  - Added warnings when attempting to move blocked tickets forward in workflow
+  - Enhanced relationship display in ticket preview with block status indicators
+  - Improved relationship utilities with functions to check and manage blocked status
+
+### Improved
+- Ticket Movement Logic:
+  - Added workflow validation to prevent illogical ticket movements
+  - Improved error handling for ticket movement restrictions
+  - Added notification system for blocked ticket status changes
+  - Enhanced user feedback when attempting to move blocked tickets
+
+### Technical
+- Added helper functions for relationship status checking
+  - `isTicketBlocked` - Determines if a ticket is blocked by others
+  - `isTicketBlocking` - Determines if a ticket is blocking others
+  - `getBlockingTickets` - Returns all tickets blocking a specific ticket
+  - `getBlockedTickets` - Returns all tickets blocked by a specific ticket
+  - `canMoveTicket` - Validates if a ticket can move to a specific column
+
 ## [0.8.0] - 2025-08-16
 ### Added
 - Relationship Visualization Improvements:
