@@ -1,12 +1,13 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { nanoid } from 'nanoid';
-import { cleanupRelationships } from './utils/relationshipUtils';
+import { cleanupRelationships, canMoveTicket } from './utils/relationshipUtils';
+import { toast } from 'react-toastify';
 
 // Example roles: Admin, Technician, Viewer, FrontDesk, Guest
 export const useAppStore = create(
   persist(
-    (set) => ({
+    (set, get) => ({
       currentUser: null, // { id, username, role }
       tickets: [],
       customers: [],
@@ -17,6 +18,8 @@ export const useAppStore = create(
       // Add more state as needed
       // Placeholder for future barcode plugin
       barcode: null,
+      // Blocking system - track notifications
+      lastBlockingNotifications: {},
       
       // Clean up existing relationships in all tickets
       deduplicateAllRelationships: () => set((state) => {
@@ -115,10 +118,44 @@ export const useAppStore = create(
         const fromCol = state.kanban.columns.find(col => col.ticketIds.includes(ticketId));
         const toCol = state.kanban.columns.find(col => col.id === toColId);
         if (!fromCol || !toCol) return {};
+        
+        // If moving backward in the workflow, always allow
+        const fromColIndex = state.kanban.columnOrder.indexOf(fromCol.id);
+        const toColIndex = state.kanban.columnOrder.indexOf(toCol.id);
+        const isMovingBackward = toColIndex < fromColIndex;
+        
+        // Check for blocking tickets if moving forward in the workflow
+        if (!isMovingBackward) {
+          // Check if ticket is blocked by other tickets that aren't done
+          const allTickets = Object.values(state.kanban.tickets);
+          const canMove = canMoveTicket(ticketId, toColId, allTickets, state.kanban.columns);
+          
+          if (!canMove) {
+            // If can't move, show notification but don't block for now
+            if (typeof window !== 'undefined' && window.toast) {
+              window.toast.warning("This ticket depends on other tickets that aren't complete yet.", {
+                position: "bottom-right",
+                autoClose: 5000,
+                closeOnClick: true,
+                pauseOnHover: true,
+              });
+            }
+            // Store the notification in state for potential future use
+            state.lastBlockingNotifications[ticketId] = {
+              timestamp: Date.now(),
+              message: "This ticket depends on other tickets that aren't complete yet."
+            };
+            
+            // Comment out to enforce strict blocking
+            // return {}; // Block move
+          }
+        }
+        
         // Enforce WIP limit
         if (toCol.wipLimit && toCol.ticketIds.length >= toCol.wipLimit) {
           return {}; // Block move
         }
+        
         // Remove from old column
         fromCol.ticketIds = fromCol.ticketIds.filter(id => id !== ticketId);
         // Insert into new column

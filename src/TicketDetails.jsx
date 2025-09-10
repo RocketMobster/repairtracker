@@ -573,6 +573,8 @@ function TicketDetails({ editModeFromRoute: editModeFromProps }) {
                       <option value="related">Related</option>
                       <option value="parent">Parent</option>
                       <option value="child">Child</option>
+                      <option value="blocks">Blocks</option>
+                      <option value="blockedBy">Blocked By</option>
                     </select>
                     <input
                       className="border px-2 py-1 rounded w-32"

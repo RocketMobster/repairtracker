@@ -170,45 +170,81 @@ export default function CardPreviewModal({ ticket, open, onClose }) {
     </div>
   )}
         {/* Related RMAs section */}
-        {Array.isArray(ticket.relatedTickets) && ticket.relatedTickets.length > 0 && (
-          <div className="mb-2">
-            <span className="font-semibold">Related RMAs:</span>
-            <div className="flex flex-wrap gap-2 mt-1">
-              {ticket.relatedTickets.map((rel, idx) => {
-                // Get actual ticket to show the real RMA number
-                const relId = typeof rel === 'object' ? rel.id : rel;
-                const allTickets = useAppStore.getState()?.tickets || [];
-                const relTicket = Array.isArray(allTickets) 
-                  ? allTickets.find(t => t.id === relId) 
-                  : null;
-                const rmaNumber = relTicket ? (relTicket.rmaNumber || relTicket.rma || relTicket.id) : relId;
-                
-                // Find the color for this relationship
-                // First try to find a matching group in groupColors
-                let relationColor = ticket.groupColor || '#6B7280'; // Default fallback
-                
-                // If the related ticket has group colors, use the first one as fallback
-                if (relTicket && relTicket.groupColors && relTicket.groupColors.length > 0) {
-                  relationColor = relTicket.groupColors[0].color;
-                } else if (relTicket && relTicket.groupColor) {
-                  relationColor = relTicket.groupColor;
-                }
-                
-                return (
-                  <span
-                    key={relId || idx}
-                    className="inline-block px-3 py-0.5 rounded-full text-xs font-semibold cursor-pointer hover:opacity-80"
-                    style={{ backgroundColor: relationColor, color: '#fff', border: `2px solid ${relationColor}` }}
-                    title={`View RMA #${rmaNumber}`}
-                    onClick={() => navigate(`/tickets/${relId}`)}
-                  >
-                    RMA #{rmaNumber}
-                  </span>
-                );
-              })}
+        {(() => {
+          // Get all tickets from the store
+          const allTickets = useAppStore.getState()?.tickets || [];
+          
+          // Find outgoing relationships (tickets that this ticket is related to)
+          const outgoingRelationships = Array.isArray(ticket.relatedTickets) ? ticket.relatedTickets : [];
+          
+          // Find incoming relationships (tickets that have this ticket as a related ticket)
+          const incomingRelationships = Array.isArray(allTickets) 
+            ? allTickets.filter(t => 
+                Array.isArray(t.relatedTickets) && 
+                t.relatedTickets.some(rel => 
+                  (typeof rel === 'object' ? rel.id : rel) === ticket.id
+                )
+              ).map(t => ({ id: t.id, type: 'incoming' }))
+            : [];
+          
+          // Combine both types of relationships, but avoid duplicates
+          const allRelationships = [
+            ...outgoingRelationships,
+            ...incomingRelationships.filter(incoming => 
+              !outgoingRelationships.some(outgoing => 
+                (typeof outgoing === 'object' ? outgoing.id : outgoing) === incoming.id
+              )
+            )
+          ];
+          
+          // Only render if there are any relationships
+          if (allRelationships.length === 0) return null;
+          
+          return (
+            <div className="mb-2">
+              <span className="font-semibold">Related RMAs:</span>
+              <div className="flex flex-wrap gap-2 mt-1">
+                {allRelationships.map((rel, idx) => {
+                  // Get actual ticket to show the real RMA number
+                  const relId = typeof rel === 'object' ? rel.id : rel;
+                  const relTicket = Array.isArray(allTickets) 
+                    ? allTickets.find(t => t.id === relId) 
+                    : null;
+                  const rmaNumber = relTicket ? (relTicket.rmaNumber || relTicket.rma || relTicket.id) : relId;
+                  
+                  // Find the color for this relationship
+                  // First try to find a matching group in groupColors
+                  let relationColor = ticket.groupColor || '#6B7280'; // Default fallback
+                  
+                  // If the related ticket has group colors, use the first one as fallback
+                  if (relTicket && relTicket.groupColors && relTicket.groupColors.length > 0) {
+                    relationColor = relTicket.groupColors[0].color;
+                  } else if (relTicket && relTicket.groupColor) {
+                    relationColor = relTicket.groupColor;
+                  }
+                  
+                  return (
+                    <span
+                      key={relId || idx}
+                      className="inline-block px-3 py-0.5 rounded-full text-xs font-semibold cursor-pointer hover:opacity-80"
+                      style={{ backgroundColor: relationColor, color: '#fff', border: `2px solid ${relationColor}` }}
+                      title={`View RMA #${rmaNumber}`}
+                      onClick={() => navigate(`/tickets/${relId}`)}
+                    >
+                      {typeof rel === 'object' && rel.type === 'blocks' && (
+                        <span className="bg-red-500 text-white text-xs rounded-full px-1 py-0.5 mr-1">Blocks</span>
+                      )}
+                      {typeof rel === 'object' && rel.type === 'blockedBy' && (
+                        <span className="bg-amber-500 text-white text-xs rounded-full px-1 py-0.5 mr-1">Blocked By</span>
+                      )}
+                      RMA #{rmaNumber}
+                    </span>
+                  );
+                })}
+              </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
         {/* Status history */}
         {ticket.statusHistory && ticket.statusHistory.length > 1 && (
           <div className="mt-4">

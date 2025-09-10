@@ -75,7 +75,8 @@ export const sampleTickets = [
       'Accessories': 'Power cable, docking station'
     },
     relatedTickets: [
-      { id: 'ticket2', type: 'related', note: 'Same customer, related equipment' }
+      { id: 'ticket2', type: 'related', note: 'Same customer, related equipment' },
+      { id: 'ticket3', type: 'blocks', note: 'This must be repaired before ticket3 can proceed' }
     ],
     activity: [
       {
@@ -152,7 +153,9 @@ export const sampleTickets = [
       'Firmware': '15.2(2)E5',
       'Location': 'Server room - Rack B'
     },
-    relatedTickets: [],
+    relatedTickets: [
+      { id: 'ticket1', type: 'blockedBy', note: 'Cannot proceed until ticket1 is complete' }
+    ],
     activity: [
       {
         id: nanoid(),
