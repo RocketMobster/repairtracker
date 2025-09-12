@@ -1,4 +1,4 @@
-# RMA Repair Tracker v0.9.1
+# RMA Repair Tracker v0.9.2
 
 This project is a React + Vite + Tailwind CSS Progressive Web App (PWA).
 

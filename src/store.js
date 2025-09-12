@@ -299,7 +299,7 @@ const createStoreWithStableReferences = () => {
         
         // If we're moving to a shipping column, check if the ticket can be shipped
         if (state.blockingConfig.shippingColumnIds && state.blockingConfig.shippingColumnIds.includes(toColId) && 
-            state.blockingConfig.preventShippingBlockingTickets) {
+            (state.blockingConfig.preventShippingBlockingTickets || state.blockingConfig.preventShippingBlockedTickets)) {
           const { canShip, reason, blockingTickets, blockedByTickets } = canShipTicket(
             ticketId, 
             combinedTickets, 

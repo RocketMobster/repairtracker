@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.9.2] - 2025-09-12
+### Fixed
+- Relationship Blocking:
+  - Fixed issue where "Prevent shipping tickets that are blocked" setting wasn't working independently of the "Prevent shipping tickets that block others" setting
+
 ## [0.9.1] - 2025-09-12
 ### Fixed
 - Drag and Drop Functionality:
