@@ -28,6 +28,9 @@ const createStoreWithStableReferences = () => {
         // Blocking system - track notifications
         lastBlockingNotifications: {},
         
+        // Notification system for related ticket status changes
+        notifications: [],
+        
         // Relationship blocking configuration
         blockingConfig: {
           // If true, prevent tickets from being closed if they are blocking other tickets
@@ -73,6 +76,31 @@ const createStoreWithStableReferences = () => {
       setStatuses: (statuses) => set({ statuses }),
       setPlugins: (plugins) => set({ plugins }),
       setRolePermissions: (rolePermissions) => set({ rolePermissions }),
+      
+      // --- Notification System ---
+      addNotification: (notification) => set((state) => ({
+        notifications: [
+          { 
+            id: nanoid(), 
+            timestamp: Date.now(), 
+            read: false, 
+            ...notification 
+          },
+          ...state.notifications
+        ].slice(0, 50) // Keep last 50 notifications
+      })),
+      
+      markNotificationRead: (id) => set((state) => ({
+        notifications: state.notifications.map(n => 
+          n.id === id ? { ...n, read: true } : n
+        )
+      })),
+      
+      markAllNotificationsRead: () => set((state) => ({
+        notifications: state.notifications.map(n => ({ ...n, read: true }))
+      })),
+      
+      clearNotifications: () => set({ notifications: [] }),
 
       // --- Kanban Board State ---
       kanban: {
@@ -462,6 +490,64 @@ const createStoreWithStableReferences = () => {
           ...state.kanban.tickets,
           [ticketId]: ticketToUpdate
         };
+        
+        // Notify about status change to related tickets if moving to a different column
+        if (fromCol.id !== toCol.id) {
+          // Find all tickets that are related to the moved ticket
+          const relatedTicketIds = [];
+          
+          // Check in both the kanban tickets and the global tickets array
+          const allTickets = [...Object.values(state.kanban.tickets || {}), ...(state.tickets || [])];
+          
+          allTickets.forEach(ticket => {
+            if (ticket && ticket.id !== ticketId && Array.isArray(ticket.relatedTickets)) {
+              // Check if this ticket has a relationship with the moved ticket
+              const hasRelationship = ticket.relatedTickets.some(rel => {
+                const relId = typeof rel === 'object' ? rel.id : rel;
+                return relId === ticketId;
+              });
+              
+              if (hasRelationship && !relatedTicketIds.includes(ticket.id)) {
+                relatedTicketIds.push(ticket.id);
+              }
+            }
+          });
+          
+          // If we found related tickets, add notifications for them
+          if (relatedTicketIds.length > 0) {
+            // Get the current user if available
+            const currentUser = state.currentUser ? state.currentUser.username : 'A user';
+            
+            // Create a notification for each related ticket
+            relatedTicketIds.forEach(relatedId => {
+              const relatedTicket = state.kanban.tickets[relatedId] || 
+                                   (Array.isArray(state.tickets) ? 
+                                    state.tickets.find(t => t.id === relatedId) : null);
+              
+              if (relatedTicket) {
+                // Prepare notification data
+                const notificationData = {
+                  title: 'Related Ticket Status Change',
+                  message: `${currentUser} moved related ticket RMA #${ticketToUpdate.rmaNumber || ticketId} to the "${toCol.name}" column.`,
+                  ticketId: relatedId,
+                  relatedTicketId: ticketId,
+                  type: 'status_change',
+                  fromColumn: fromCol.name,
+                  toColumn: toCol.name
+                };
+                
+                // Add notification to the store using the addNotification function
+                // We need to call it outside of this set function to avoid nested state updates
+                setTimeout(() => {
+                  const addNotification = useAppStore.getState().addNotification;
+                  if (typeof addNotification === 'function') {
+                    addNotification(notificationData);
+                  }
+                }, 0);
+              }
+            });
+          }
+        }
         
         console.log('Move complete, returning updated state');
         

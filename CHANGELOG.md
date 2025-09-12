@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.9.4] - 2025-09-12
+### Added
+- Notification System:
+  - Added notification bell icon in the navigation bar
+  - Implemented notifications for related ticket status changes
+  - Created dropdown interface to view and manage notifications
+  - Added ability to mark notifications as read or clear all notifications
+  - Notifications persist across page navigation
+
 ## [0.9.3] - 2025-09-12
 ### Fixed
 - UI:

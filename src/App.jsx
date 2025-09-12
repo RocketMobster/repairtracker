@@ -8,6 +8,7 @@ import { useAppStore } from './store';
 import { initializeSampleData } from './sampleData';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import NotificationCenter from './components/NotificationCenter';
 
 function Dashboard() {
   return <div className="p-8"><h2 className="text-2xl font-bold mb-2">Dashboard</h2><p>Overview and widgets go here.</p></div>;
@@ -105,6 +106,8 @@ function App() {
         <div className="ml-auto flex items-center gap-2">
           {currentUser ? (
             <>
+              {/* Add NotificationCenter before the username */}
+              <NotificationCenter />
               <span className="text-blue-900 font-semibold">{currentUser.username} ({currentUser.role})</span>
               <button onClick={handleLogout} className="bg-red-500 text-white px-3 py-1 rounded">Logout</button>
             </>
