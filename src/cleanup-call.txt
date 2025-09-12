@@ -1,0 +1,3 @@
+    // Clean up relationships before saving to avoid duplicates
+    const cleanedRelationships = cleanupRelationships(relatedTickets);
+    console.log('SAVING: Using cleaned relationships:', cleanedRelationships);

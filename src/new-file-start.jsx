@@ -1,14 +1,13 @@
-// Backup of TicketDetails.jsx before cleanup
-// If you need to restore, rename this file to TicketDetails.jsx
-
-import React, { useState, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { nanoid } from 'nanoid';
 import { SketchPicker } from 'react-color';
-import { useParams, useNavigate } from 'react-router-dom';
-import { useAppStore } from './store';
-import { ticketFieldGroups, ticketFormSchema, getTicketFormSchema } from './formSchemas';
+import { toast } from 'react-toastify';
+
+import useAppStore from './store';
+import DynamicForm from './components/DynamicForm';
+import { getTicketFormSchema } from './schemas/ticketFormSchema';
 import ActivityFeed from './components/ActivityFeed';
-import DynamicForm from './DynamicForm';
 
 // Helper to render attachments safely
 function renderAttachments(attachments) {
@@ -39,9 +38,7 @@ function renderAttachments(attachments) {
             </div>
           );
         })}
-      {/* ...existing code... */}
+      </div>
     </div>
-  }
+  );
 }
-
-// ...rest of TicketDetails.jsx code...

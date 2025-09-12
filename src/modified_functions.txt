@@ -1,0 +1,147 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { nanoid } from 'nanoid';
+import { SketchPicker } from 'react-color';
+import { useParams, useNavigate } from 'react-router-dom';
+import { useAppStore } from './store';
+import { ticketFieldGroups, ticketFormSchema, getTicketFormSchema } from './formSchemas';
+import ActivityFeed from './components/ActivityFeed';
+import DynamicForm from './DynamicForm';
+
+// Helper function that returns a Map with ticketId -> strongest relationship type
+function filterDuplicateRelationships(relationships) {
+  console.log('Filtering duplicate relationships:', relationships);
+  // Store the strongest relationship per ticket ID (parent/child > related)
+  const ticketRelationships = new Map();
+  
+  if (!relationships || !Array.isArray(relationships)) return ticketRelationships;
+  
+  for (const rel of relationships) {
+    if (!rel || !rel.id) continue;
+    
+    const existingRel = ticketRelationships.get(rel.id);
+    console.log(`Checking relationship for ticket ${rel.id}, type: ${rel.type}`);
+    
+    // If no existing relationship or current one is stronger, update the map
+    if (!existingRel || 
+        (existingRel.type === 'related' && 
+         (rel.type === 'parent' || rel.type === 'child'))) {
+      console.log(`Setting strongest relationship for ${rel.id} to ${rel.type}`);
+      ticketRelationships.set(rel.id, rel);
+    }
+  }
+  
+  console.log('Filtered relationships:', Array.from(ticketRelationships.values()));
+  return ticketRelationships;
+}
+
+// New function to clean up relationships before saving
+function cleanupRelationships(relationships) {
+  console.log('Cleaning up relationships:', relationships);
+  const ticketRelationships = filterDuplicateRelationships(relationships);
+  const result = Array.from(ticketRelationships.values());
+  console.log('Cleanup complete, returning:', result);
+  return result;
+}
+
+// Helper to render attachments safely
+>   function handleDynamicFormSubmit(formValues, customFields) {
+      // Merge all fields, including relationships and custom fields
+      const mergedCustomFields = {
+        ...(ticket?.customFields || {}),
+        ...(formValues.customFields || {}),
+        ...(customFields || {})
+      };
+      // Validation: Prevent blank tickets
+      const requiredFields = ['item', 'reason'];
+      const missingFields = requiredFields.filter(f => {
+        const v = formValues[f];
+        return v === undefined || v === null || (typeof v === 'string' && v.trim() === '');
+      });
+      // Debug log for field values
+      if (!ticket) {
+        console.log('Form values received:', formValues);
+        if (missingFields.length > 0) {
+          setError('Please fill out all required fields before submitting.');
+          return;
+        }
+      }
+      
+      // Handle group color relationships
+      if (pendingGroupColor && !isNewTicket && relatedTickets.length > 0) {
+        const relatedIds = relatedTickets.map(rel => rel.id).filter(Boolean);
+        
+        // Only apply colors to valid relationships
+        if (relatedIds.length > 0) {
+          const groupIds = [ticket?.id, ...relatedIds];
+          // Use the generateGroupId function to ensure consistent group ID
+          const groupId = generateGroupId(groupIds);
+          setGroupColorForTickets(groupIds, pendingGroupColor, groupId);
+        }
+      } else if (pendingGroupColor && isNewTicket) {
+        // For new tickets, we'll add the color when the ticket is created
+        formValues.groupColor = pendingGroupColor;
+      }
+      
+      // Update existing or create new ticket
+      if (ticket) {
+        // Create a list of current related ticket IDs
+        const currentRelatedIds = relatedTickets.map(rel => rel.id);
+        
+        // Find related tickets that were removed
+        const previousRelatedIds = (ticket.relatedTickets || []).map(rel => rel.id || rel);
+        const removedRelatedIds = previousRelatedIds.filter(id => !currentRelatedIds.includes(id));
+        
+        // If there are removed relationships, we need to clean up any group colors
+        if (removedRelatedIds.length > 0) {
+          // For each removed ticket, remove group colors that include both tickets
+          for (const removedId of removedRelatedIds) {
+            // Check if this ticket has group colors that include the removed ticket
+            if (ticket.groupColors && Array.isArray(ticket.groupColors)) {
+              // Find group colors that include both tickets
+              const groupsToRemove = ticket.groupColors.filter(group => {
+                return group.ticketIds && Array.isArray(group.ticketIds) && 
+                       group.ticketIds.includes(removedId);
+              });
+              
+              // For each group to remove, clear the group colors
+              for (const group of groupsToRemove) {
+                if (group.ticketIds && Array.isArray(group.ticketIds)) {
+                  // Remove group colors from all tickets in the group
+                  clearGroupColorsForTickets(group.ticketIds);
+                }
+              }
+            }
+          }
+        }
+        
+        const updatedTicket = {
+          ...ticket,
+          ...formValues,
+          customFields: mergedCustomFields,
+          relatedTickets,
+          externalLinks,
+        };
+        setTickets(tickets.map(t => t.id === ticket.id ? updatedTicket : t));
+        // Sync to kanban board state
+        const updateKanbanTicket = useAppStore.getState().updateKanbanTicket;
+        if (typeof updateKanbanTicket === 'function') {
+          updateKanbanTicket(updatedTicket);
+        }
+        setMsg('Ticket updated.');
+      } else {
+        // Creating new ticket: assign RMA number and ID here
+        // Ensure customerId is set from context if not present in formValues
+        let ticketCustomerId = formValues.customerId;
+        if (!ticketCustomerId) {
+          ticketCustomerId = customerIdFromQuery || fallbackCustomer?.id;
+        }
+        const newTicket = {
+          id: nanoid(),
+          rmaNumber: formValues.rmaNumber || nanoid(8),
+          ...formValues,
+          customerId: ticketCustomerId,
+          customFields: mergedCustomFields,
+          relatedTickets,
+          externalLinks,
+          createdAt: new Date().toISOString(),
+          status: 'New',

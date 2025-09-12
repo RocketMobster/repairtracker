@@ -1,0 +1,20 @@
+  // Clean up relationships for saving to the database
+  // Returns an array of cleaned relationships with duplicates removed and priority set
+  function cleanupRelationships(relationships) {
+    console.log('CLEANUP: Starting relationship cleanup with', relationships.length, 'relationships');
+    
+    // First pass: filter duplicates using our existing function
+    const filteredMap = filterDuplicateRelationships(relationships);
+    
+    // Convert map values back to an array
+    const cleanedRelationships = Array.from(filteredMap.values()).map(rel => {
+      // Remove any temporary properties that shouldn't be saved
+      const { originalIndex, ...cleanRel } = rel;
+      return cleanRel;
+    });
+    
+    console.log('CLEANUP: After deduplication, have', cleanedRelationships.length, 'relationships');
+    
+    // Return the cleaned array of relationships
+    return cleanedRelationships;
+  }

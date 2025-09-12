@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo, memo } from 'react';
 import ActivityFeed from './ActivityFeed';
 import { useAppStore } from '../store';
 import { useNavigate } from 'react-router-dom';
@@ -6,17 +6,27 @@ import { useNavigate } from 'react-router-dom';
 // TODO: Replace with real permission check
 const isAdmin = true;
 
-export default function CardPreviewModal({ ticket, open, onClose }) {
-  console.log('CardPreviewModal ticket:', ticket);
+// Use memo to prevent unnecessary re-renders
+const CardPreviewModal = memo(function CardPreviewModal({ ticket, open, onClose }) {
+  // Remove console log completely
+
+  // Use a single selector to get customers to minimize store subscriptions
   const customers = useAppStore((s) => s.customers) || [];
-  // Lookup company name from customerId
-  let companyName = '—';
+  
+  // Use useMemo for all derived state
+  const { companyName, customerSlug } = useMemo(() => {
+    let companyName = '—';
     let customerSlug = null;
+    
     if (ticket && ticket.customerId) {
       const customer = customers.find(c => c.id === ticket.customerId);
       companyName = customer?.companyName || customer?.businessName || '—';
       customerSlug = customer?.slug || customer?.id;
-  }
+    }
+    
+    return { companyName, customerSlug };
+  }, [ticket, customers]);
+  
   const navigate = useNavigate();
   useEffect(() => {
     if (!open) return;
@@ -172,7 +182,10 @@ export default function CardPreviewModal({ ticket, open, onClose }) {
         {/* Related RMAs section */}
         {(() => {
           // Get all tickets from the store
-          const allTickets = useAppStore.getState()?.tickets || [];
+          const ticketsObj = useAppStore.getState()?.kanban?.tickets || {};
+          // Also get all tickets from the main store
+          const allStoreTickets = useAppStore.getState()?.tickets || [];
+          const allTickets = Object.values(ticketsObj);
           
           // Find outgoing relationships (tickets that this ticket is related to)
           const outgoingRelationships = Array.isArray(ticket.relatedTickets) ? ticket.relatedTickets : [];
@@ -181,10 +194,26 @@ export default function CardPreviewModal({ ticket, open, onClose }) {
           const incomingRelationships = Array.isArray(allTickets) 
             ? allTickets.filter(t => 
                 Array.isArray(t.relatedTickets) && 
-                t.relatedTickets.some(rel => 
-                  (typeof rel === 'object' ? rel.id : rel) === ticket.id
-                )
-              ).map(t => ({ id: t.id, type: 'incoming' }))
+                t.relatedTickets.some(rel => {
+                  const relId = typeof rel === 'object' ? rel.id : rel;
+                  return relId === ticket.id;
+                })
+              ).map(t => {
+                // Determine the relationship type for incoming tickets
+                const relationType = Array.isArray(t.relatedTickets) 
+                  ? t.relatedTickets.find(rel => {
+                      const relId = typeof rel === 'object' ? rel.id : rel;
+                      return relId === ticket.id;
+                    })
+                  : null;
+                
+                // If it's a blocks relationship, this ticket is blocked by the other ticket
+                const type = typeof relationType === 'object' && relationType.type === 'blocks' 
+                  ? 'blockedBy' 
+                  : (typeof relationType === 'object' ? relationType.type : 'related');
+                
+                return { id: t.id, type };
+              })
             : [];
           
           // Combine both types of relationships, but avoid duplicates
@@ -207,9 +236,16 @@ export default function CardPreviewModal({ ticket, open, onClose }) {
                 {allRelationships.map((rel, idx) => {
                   // Get actual ticket to show the real RMA number
                   const relId = typeof rel === 'object' ? rel.id : rel;
-                  const relTicket = Array.isArray(allTickets) 
-                    ? allTickets.find(t => t.id === relId) 
-                    : null;
+                  
+                  // First try to find the ticket in the Kanban tickets
+                  let relTicket = ticketsObj[relId] || null;
+                  
+                  // If not found in Kanban, try to find it in the main store
+                  if (!relTicket && Array.isArray(allStoreTickets)) {
+                    relTicket = allStoreTickets.find(t => t.id === relId) || null;
+                  }
+                  
+                  // Use the proper RMA number format if available
                   const rmaNumber = relTicket ? (relTicket.rmaNumber || relTicket.rma || relTicket.id) : relId;
                   
                   // Find the color for this relationship
@@ -312,4 +348,6 @@ export default function CardPreviewModal({ ticket, open, onClose }) {
       </div>
     </div>
   );
-}
+});
+
+export default CardPreviewModal;

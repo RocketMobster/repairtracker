@@ -1,5 +1,25 @@
 # Changelog
 
+## [0.9.1] - 2025-09-12
+### Fixed
+- Drag and Drop Functionality:
+  - Fixed issue with cards not being draggable between columns
+  - Fixed inability to reorder cards vertically within columns
+  - Fixed issue preventing upward dragging of cards
+  - Fixed specific problem with dragging cards to the top position
+  - Enhanced drop indicators for better visibility and targeting
+  - Repositioned drag handle to prevent overlap with priority star
+  - Optimized collision detection for more reliable dragging
+- Column Functionality:
+  - Fixed WIP limit setting functionality
+  - Added proper updateKanbanColumn function to the store
+
+### Technical
+- Improved DndKit configuration with better sensor settings
+- Enhanced drop indicator visualization without text labels
+- Implemented special handling for top position drops
+- Added comprehensive logging for drag operations
+
 ## [0.9.0] - 2025-09-10
 ### Added
 - Blocking Relationship System:

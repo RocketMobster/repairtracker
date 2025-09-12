@@ -1,4 +1,4 @@
-# RMA Repair Tracker v0.9.0
+# RMA Repair Tracker v0.9.1
 
 This project is a React + Vite + Tailwind CSS Progressive Web App (PWA).
 
@@ -39,3 +39,12 @@ This project is a React + Vite + Tailwind CSS Progressive Web App (PWA).
 
 ## Roadmap & Documentation
 - See `ROADMAP.md` and `repairtracker_prd.md` for full feature set, admin extensibility, and future plans.
+
+## TODOs and Known Issues
+
+### Kanban Board
+- ~~**PRIORITY FIX NEEDED**: Drag and drop functionality still has issues:~~
+  - ~~Cards cannot be dragged between columns or reordered vertically within the same column~~
+  - ~~The drag handle (two horizontal lines) overlaps with the priority star button in the top-right corner~~
+  - ~~Current workaround: Cards can be dragged by clicking along the top edge of the card~~
+  - ~~Need to investigate DndKit configuration and interaction issues with sortable context~~

@@ -1,25 +1,53 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { nanoid } from 'nanoid';
-import { cleanupRelationships, canMoveTicket } from './utils/relationshipUtils';
+import { 
+  cleanupRelationships, 
+  canMoveTicket, 
+  canCloseTicket, 
+  canShipTicket 
+} from './utils/relationshipUtils';
 import { toast } from 'react-toastify';
 
-// Example roles: Admin, Technician, Viewer, FrontDesk, Guest
-export const useAppStore = create(
-  persist(
-    (set, get) => ({
-      currentUser: null, // { id, username, role }
-      tickets: [],
-      customers: [],
-      users: [],
-      statuses: [],
-      plugins: [],
-      rolePermissions: {},
-      // Add more state as needed
-      // Placeholder for future barcode plugin
-      barcode: null,
-      // Blocking system - track notifications
-      lastBlockingNotifications: {},
+// Create a stable reference for the store to avoid snapshot creation issues
+const createStoreWithStableReferences = () => {
+  // Define the store with all state
+  return create(
+    persist(
+      (set, get) => ({
+        currentUser: null, // { id, username, role }
+        tickets: [],
+        customers: [],
+        users: [],
+        statuses: [],
+        plugins: [],
+        rolePermissions: {},
+        // Add more state as needed
+        // Placeholder for future barcode plugin
+        barcode: null,
+        // Blocking system - track notifications
+        lastBlockingNotifications: {},
+        
+        // Relationship blocking configuration
+        blockingConfig: {
+          // If true, prevent tickets from being closed if they are blocking other tickets
+          preventClosingBlockingTickets: true,
+          // If true, prevent tickets from being closed if they are blocked by other tickets
+          preventClosingBlockedTickets: true,
+          // If true, prevent tickets from being shipped if they are blocking other tickets
+          preventShippingBlockingTickets: true,
+          // If true, prevent tickets from being shipped if they are blocked by other tickets
+          preventShippingBlockedTickets: true,
+          // Column IDs that are considered "closed" or "done"
+          closedColumnIds: ['done'],
+          // Column IDs that are considered "shipping" or "ready to ship"
+          shippingColumnIds: ['shipping'],
+        },
+      
+      // Function to update blocking configuration
+      updateBlockingConfig: (newConfig) => set((state) => ({
+        blockingConfig: { ...state.blockingConfig, ...newConfig }
+      })),
       
       // Clean up existing relationships in all tickets
       deduplicateAllRelationships: () => set((state) => {
@@ -113,75 +141,338 @@ export const useAppStore = create(
         }
         return { kanban };
       }),
+      // Add the updateKanbanColumn function to handle WIP limits and other column properties
+      updateKanbanColumn: (colId, updatedProps) => set((state) => {
+        // Find the column by ID
+        const columnToUpdate = state.kanban.columns.find(col => col.id === colId);
+        
+        if (!columnToUpdate) {
+          console.warn(`Column with id ${colId} not found`);
+          return state;
+        }
+        
+        console.log(`Updating column ${colId} with properties:`, updatedProps);
+        
+        // Create new columns array with the updated column
+        const updatedColumns = state.kanban.columns.map(col => {
+          if (col.id === colId) {
+            return { ...col, ...updatedProps };
+          }
+          return col;
+        });
+        
+        return {
+          kanban: {
+            ...state.kanban,
+            columns: updatedColumns
+          }
+        };
+      }),
       setKanban: (kanban) => set({ kanban }),
       moveTicket: (ticketId, toColId, toIdx) => set(state => {
+        console.log(`moveTicket called with: ticketId=${ticketId}, toColId=${toColId}, toIdx=${toIdx}`);
+        
+        // Find the columns
         const fromCol = state.kanban.columns.find(col => col.ticketIds.includes(ticketId));
         const toCol = state.kanban.columns.find(col => col.id === toColId);
-        if (!fromCol || !toCol) return {};
         
+        // Debug output
+        console.log('From column:', fromCol ? fromCol.id : 'not found');
+        console.log('To column:', toCol ? toCol.id : 'not found');
+        
+        if (!fromCol || !toCol) {
+          console.warn('Source or target column not found');
+          return {}; // No change
+        }
+        
+        // If the target column is the same as the source column, just reorder within column
+        if (fromCol.id === toCol.id) {
+          const fromIdx = fromCol.ticketIds.indexOf(ticketId);
+          
+          // Ensure toIdx is valid
+          const safeToIdx = Math.max(0, Math.min(toIdx, fromCol.ticketIds.length - 1));
+          
+          if (fromIdx === safeToIdx) {
+            console.log('Same position, no change needed');
+            return {}; // No change needed
+          }
+          
+          console.log(`Reordering within column ${fromCol.id} from ${fromIdx} to ${safeToIdx}`);
+          
+          // Create new columns array with updated ticketIds
+          const newColumns = state.kanban.columns.map(col => {
+            if (col.id === fromCol.id) {
+              // Create a new array of ticketIds with the item moved
+              const newTicketIds = [...col.ticketIds];
+              
+              // Handle special case: When moving a ticket up (to a lower index)
+              // we need to adjust the target index
+              if (safeToIdx < fromIdx) {
+                console.log(`Moving upward from ${fromIdx} to ${safeToIdx}`);
+                
+                // Special handling for moving to the top position
+                if (safeToIdx === 0) {
+                  console.log("Moving to the TOP position - special handling");
+                  newTicketIds.splice(fromIdx, 1); // Remove from original position
+                  newTicketIds.unshift(ticketId); // Add to the beginning
+                } else {
+                  newTicketIds.splice(fromIdx, 1); // Remove from original position
+                  newTicketIds.splice(safeToIdx, 0, ticketId); // Insert at new position
+                }
+              } else {
+                // Normal case - moving down
+                const [movedItem] = newTicketIds.splice(fromIdx, 1);
+                newTicketIds.splice(safeToIdx, 0, movedItem);
+              }
+              
+              return { ...col, ticketIds: newTicketIds };
+            }
+            return col;
+          });
+          
+          return {
+            kanban: {
+              ...state.kanban,
+              columns: newColumns
+            }
+          };
+        }
+        
+        // If moving between columns
         // If moving backward in the workflow, always allow
         const fromColIndex = state.kanban.columnOrder.indexOf(fromCol.id);
         const toColIndex = state.kanban.columnOrder.indexOf(toCol.id);
         const isMovingBackward = toColIndex < fromColIndex;
         
-        // Check for blocking tickets if moving forward in the workflow
-        if (!isMovingBackward) {
-          // Check if ticket is blocked by other tickets that aren't done
-          const allTickets = Object.values(state.kanban.tickets);
-          const canMove = canMoveTicket(ticketId, toColId, allTickets, state.kanban.columns);
+        console.log(`Moving between columns: ${fromCol.id} -> ${toCol.id} (${isMovingBackward ? 'backward' : 'forward'})`);
+        
+        // Get the current ticket
+        const currentTicket = state.kanban.tickets[ticketId];
+        if (!currentTicket) {
+          console.warn('Ticket not found in kanban tickets');
+          return {};
+        }
+        
+        // Get all tickets for relationship checking
+        const allTickets = Object.values(state.kanban.tickets);
+        
+        // Add all tickets from the main store that aren't on the board for complete relationship checking
+        const allTicketsInSystem = Array.isArray(state.tickets) ? state.tickets : [];
+        const combinedTickets = [...allTickets];
+        allTicketsInSystem.forEach(systemTicket => {
+          if (!combinedTickets.some(boardTicket => boardTicket.id === systemTicket.id)) {
+            combinedTickets.push(systemTicket);
+          }
+        });
+        
+        // If we're moving to a closed column, check if the ticket can be closed
+        if (state.blockingConfig.closedColumnIds && state.blockingConfig.closedColumnIds.includes(toColId) && 
+            state.blockingConfig.preventClosingBlockingTickets) {
+          const { canClose, reason, blockingTickets, blockedByTickets } = canCloseTicket(
+            ticketId, 
+            combinedTickets, 
+            state.blockingConfig
+          );
           
-          if (!canMove) {
-            // If can't move, show notification but don't block for now
-            if (typeof window !== 'undefined' && window.toast) {
-              window.toast.warning("This ticket depends on other tickets that aren't complete yet.", {
+          if (!canClose) {
+            // Show notification about why the ticket can't be closed
+            toast.warning(reason, {
+              position: "bottom-right",
+              autoClose: 5000,
+              closeOnClick: true,
+              pauseOnHover: true,
+            });
+            
+            // Store the notification in state for potential future use
+            state.lastBlockingNotifications[ticketId] = {
+              timestamp: Date.now(),
+              message: reason,
+              blockingTickets,
+              blockedByTickets
+            };
+            
+            // Block the move if configured to enforce this rule
+            console.warn('Move blocked: ticket cannot be closed');
+            return {}; // Block move
+          }
+        }
+        
+        // If we're moving to a shipping column, check if the ticket can be shipped
+        if (state.blockingConfig.shippingColumnIds && state.blockingConfig.shippingColumnIds.includes(toColId) && 
+            state.blockingConfig.preventShippingBlockingTickets) {
+          const { canShip, reason, blockingTickets, blockedByTickets } = canShipTicket(
+            ticketId, 
+            combinedTickets, 
+            state.blockingConfig
+          );
+          
+          if (!canShip) {
+            // Show notification about why the ticket can't be shipped
+            toast.warning(reason, {
+              position: "bottom-right",
+              autoClose: 5000,
+              closeOnClick: true,
+              pauseOnHover: true,
+            });
+            
+            // Store the notification in state for potential future use
+            state.lastBlockingNotifications[ticketId] = {
+              timestamp: Date.now(),
+              message: reason,
+              blockingTickets,
+              blockedByTickets
+            };
+            
+            // Block the move if configured to enforce this rule
+            console.warn('Move blocked: ticket cannot be shipped');
+            return {}; // Block move
+          }
+        }
+        
+        // Check for blocking tickets if moving forward in the workflow
+        if (!isMovingBackward && 
+            (!state.blockingConfig.closedColumnIds || !state.blockingConfig.closedColumnIds.includes(toColId)) && 
+            (!state.blockingConfig.shippingColumnIds || !state.blockingConfig.shippingColumnIds.includes(toColId))) {
+          // Check if ticket is blocked by other tickets that aren't done
+          if (typeof canMoveTicket === 'function') {
+            const canMove = canMoveTicket(ticketId, toColId, combinedTickets, state.kanban.columns);
+            
+            if (!canMove) {
+              // If can't move, show notification but don't block for now
+              toast.warning("This ticket depends on other tickets that aren't complete yet.", {
                 position: "bottom-right",
                 autoClose: 5000,
                 closeOnClick: true,
                 pauseOnHover: true,
               });
+              
+              // Store the notification in state for potential future use
+              state.lastBlockingNotifications[ticketId] = {
+                timestamp: Date.now(),
+                message: "This ticket depends on other tickets that aren't complete yet."
+              };
+              
+              // Uncomment to enforce strict blocking
+              // console.warn('Move blocked: ticket is blocked by others');
+              // return {}; // Block move
             }
-            // Store the notification in state for potential future use
-            state.lastBlockingNotifications[ticketId] = {
-              timestamp: Date.now(),
-              message: "This ticket depends on other tickets that aren't complete yet."
-            };
-            
-            // Comment out to enforce strict blocking
-            // return {}; // Block move
           }
         }
         
-        // Enforce WIP limit
-        if (toCol.wipLimit && toCol.ticketIds.length >= toCol.wipLimit) {
+        // Enforce WIP limit - but only if it's not the same column (we already handled same-column case above)
+        if (fromCol.id !== toCol.id && toCol.wipLimit && toCol.ticketIds.length >= toCol.wipLimit) {
+          toast.warning(`Column "${toCol.name}" has reached its WIP limit of ${toCol.wipLimit}`, {
+            position: "bottom-right",
+            autoClose: 3000,
+          });
+          console.warn('Move blocked: WIP limit reached');
           return {}; // Block move
         }
         
-        // Remove from old column
-        fromCol.ticketIds = fromCol.ticketIds.filter(id => id !== ticketId);
-        // Insert into new column
-        toCol.ticketIds = [
-          ...toCol.ticketIds.slice(0, toIdx),
-          ticketId,
-          ...toCol.ticketIds.slice(toIdx)
-        ];
-        // Update ticket statusHistory
-        const ticket = state.kanban.tickets[ticketId];
-        if (ticket && (!ticket.statusHistory || ticket.statusHistory[ticket.statusHistory.length - 1]?.columnId !== toColId)) {
-          const now = new Date().toISOString();
-          ticket.statusHistory = [
-            ...(ticket.statusHistory || []),
-            { columnId: toColId, enteredAt: now }
+        console.log('All checks passed, performing move');
+        
+        // Create new columns array with updated ticketIds
+        const newColumns = state.kanban.columns.map(col => {
+          if (col.id === fromCol.id) {
+            // If moving within the same column, we'll handle removal in the next block
+            if (fromCol.id !== toCol.id) {
+              // Remove from source column only if moving to a different column
+              return { 
+                ...col, 
+                ticketIds: col.ticketIds.filter(id => id !== ticketId) 
+              };
+            }
+            return col; // Will be handled below if same column
+          }
+          if (col.id === toCol.id) {
+            // Add to target column
+            const newTicketIds = [...col.ticketIds];
+            
+            // If same column, handle the position change correctly
+            if (fromCol.id === toCol.id) {
+              const fromIdx = newTicketIds.indexOf(ticketId);
+              console.log(`Moving in same column from index ${fromIdx} to ${toIdx}`);
+              
+              if (fromIdx !== -1) {
+                // Remove ticket from current position
+                newTicketIds.splice(fromIdx, 1);
+                
+                // Calculate proper insertion index
+                // If moving to a position after the current one, we need to account for the removal
+                let insertIndex = toIdx;
+                if (fromIdx < toIdx) {
+                  // When moving down, the target position is shifted by 1 due to removal
+                  insertIndex = Math.max(0, toIdx - 1);
+                  console.log(`Adjusted index for downward move: ${insertIndex}`);
+                } else {
+                  console.log(`No adjustment needed for upward move, using index: ${insertIndex}`);
+                }
+                
+                // Make sure insertIndex is within bounds
+                insertIndex = Math.min(insertIndex, newTicketIds.length);
+                
+                // Insert at the properly adjusted index
+                newTicketIds.splice(insertIndex, 0, ticketId);
+                console.log(`Final ticketIds after move: ${newTicketIds.join(', ')}`);
+              }
+            } else {
+              // Make sure toIdx is within bounds for cross-column movement
+              // Special handling for dropping to the top position
+              if (toIdx === 0) {
+                console.log("Cross-column move to TOP position - special handling");
+                newTicketIds.unshift(ticketId); // Add to the beginning
+              } else {
+                const safeIdx = Math.min(toIdx, newTicketIds.length);
+                // Insert at the target index
+                newTicketIds.splice(safeIdx, 0, ticketId);
+              }
+              console.log(`Moved to different column at position: ${toIdx}`);
+            }
+            return { ...col, ticketIds: newTicketIds };
+          }
+          return col;
+        });
+        
+        // Update ticket statusHistory if moving to a different column
+        const ticketToUpdate = { ...state.kanban.tickets[ticketId] };
+        const now = new Date().toISOString();
+        
+        // Only update statusHistory if moving to a different column
+        if (fromCol.id !== toCol.id && ticketToUpdate) {
+          console.log(`Updating status history for ticket ${ticketId}`);
+          // Create a new statusHistory entry with consistent property names
+          ticketToUpdate.statusHistory = [
+            ...(ticketToUpdate.statusHistory || []),
+            { columnId: toCol.id, timestamp: now }
           ];
         }
+        
         // Remove Incoming column if empty after move
-        let columns = [...state.kanban.columns];
+        let columns = [...newColumns]; // Use the newColumns we just created
         let columnOrder = [...state.kanban.columnOrder];
         const incoming = columns.find(col => col.id === 'incoming');
         if (incoming && incoming.ticketIds.length === 0 && fromCol.id === 'incoming') {
+          console.log('Removing empty Incoming column');
           columns = columns.filter(col => col.id !== 'incoming');
           columnOrder = columnOrder.filter(id => id !== 'incoming');
         }
-        return { kanban: { ...state.kanban, columns, columnOrder, tickets: { ...state.kanban.tickets, [ticketId]: { ...ticket } } } };
+        
+        // Create a new tickets object with the updated ticket
+        const updatedTickets = {
+          ...state.kanban.tickets,
+          [ticketId]: ticketToUpdate
+        };
+        
+        console.log('Move complete, returning updated state');
+        
+        return { 
+          kanban: { 
+            ...state.kanban, 
+            columns, 
+            columnOrder, 
+            tickets: updatedTickets 
+          } 
+        };
       }),
       reorderTicket: (colId, startIndex, endIndex) => set((state) => {
         const kanban = { ...state.kanban };
@@ -191,6 +482,158 @@ export const useAppStore = create(
         kanban.columns[colId].ticketIds = ticketIds;
         return { kanban };
       }),
+      /**
+       * Syncs group colors between all related tickets on the board.
+       * This ensures that tickets in the same relationship group share the same group colors.
+       * @private
+       */
+      _syncGroupColorsForAllTickets: (state) => {
+        const kanban = { ...state.kanban };
+        const allBoardTickets = Object.values(kanban.tickets || {});
+        const allTickets = Array.isArray(state.tickets) ? state.tickets : [];
+        
+        // First, collect all unique groups and their colors
+        const groupColorMap = new Map(); // Map of groupId -> color
+        
+        // Collect from board tickets
+        allBoardTickets.forEach(ticket => {
+          if (Array.isArray(ticket.groupColors)) {
+            ticket.groupColors.forEach(group => {
+              if (group && typeof group === 'object' && group.id && group.color) {
+                groupColorMap.set(group.id, group.color);
+              }
+            });
+          }
+        });
+        
+        // Collect from all tickets
+        allTickets.forEach(ticket => {
+          if (Array.isArray(ticket.groupColors)) {
+            ticket.groupColors.forEach(group => {
+              if (group && typeof group === 'object' && group.id && group.color) {
+                groupColorMap.set(group.id, group.color);
+              }
+            });
+          }
+        });
+        
+        // Now, find all relationships between tickets
+        const relationshipGroups = new Map(); // Map of ticketId -> Set of related ticketIds
+        
+        // Build relationship graph
+        allBoardTickets.forEach(ticket => {
+          if (!ticket.id) return;
+          
+          // Initialize set for this ticket if not exists
+          if (!relationshipGroups.has(ticket.id)) {
+            relationshipGroups.set(ticket.id, new Set());
+          }
+          
+          // Add all related tickets
+          if (Array.isArray(ticket.relatedTickets)) {
+            ticket.relatedTickets.forEach(rel => {
+              const relId = typeof rel === 'object' ? rel.id : rel;
+              if (relId) {
+                relationshipGroups.get(ticket.id).add(relId);
+                
+                // Also add the reverse relationship
+                if (!relationshipGroups.has(relId)) {
+                  relationshipGroups.set(relId, new Set());
+                }
+                relationshipGroups.get(relId).add(ticket.id);
+              }
+            });
+          }
+        });
+        
+        // For each relationship group, ensure all tickets have the same group colors
+        relationshipGroups.forEach((relatedIds, ticketId) => {
+          // Skip if no relationships
+          if (relatedIds.size === 0) return;
+          
+          // Create a stable group ID based on sorted ticket IDs
+          const allIds = [ticketId, ...Array.from(relatedIds)].sort();
+          const groupId = `group-${allIds.join('-')}`;
+          
+          // If this group doesn't have a color yet, assign one
+          if (!groupColorMap.has(groupId)) {
+            // Use existing color from any ticket in the group if available
+            let foundColor = null;
+            
+            // Check board tickets first
+            for (const id of allIds) {
+              const ticket = kanban.tickets[id];
+              if (ticket && ticket.groupColor) {
+                foundColor = ticket.groupColor;
+                break;
+              }
+            }
+            
+            // If no color found, use a default
+            if (!foundColor) {
+              foundColor = '#6B7280'; // Default gray
+            }
+            
+            groupColorMap.set(groupId, foundColor);
+          }
+          
+          const color = groupColorMap.get(groupId);
+          
+          // Update all tickets in this group with the group color
+          for (const id of allIds) {
+            // Update board tickets
+            if (kanban.tickets[id]) {
+              // Initialize or clean up groupColors array
+              if (!Array.isArray(kanban.tickets[id].groupColors)) {
+                kanban.tickets[id].groupColors = [];
+              }
+              
+              // Add this group if not present
+              const existingIdx = kanban.tickets[id].groupColors.findIndex(g => g && g.id === groupId);
+              if (existingIdx >= 0) {
+                kanban.tickets[id].groupColors[existingIdx].color = color;
+              } else {
+                kanban.tickets[id].groupColors.push({ id: groupId, color });
+              }
+              
+              // Also update the legacy groupColor property
+              kanban.tickets[id].groupColor = color;
+            }
+          }
+        });
+        
+        // Also sync with main tickets array
+        let ticketsArr = [...allTickets];
+        ticketsArr = ticketsArr.map(ticket => {
+          const id = ticket.id;
+          if (!id) return ticket;
+          
+          // Find all groups this ticket belongs to
+          const groups = [];
+          relationshipGroups.forEach((relatedIds, ticketId) => {
+            if (ticketId === id || relatedIds.has(id)) {
+              const allIds = [ticketId, ...Array.from(relatedIds)].sort();
+              const groupId = `group-${allIds.join('-')}`;
+              if (groupColorMap.has(groupId)) {
+                groups.push({ id: groupId, color: groupColorMap.get(groupId) });
+              }
+            }
+          });
+          
+          // If no groups found, leave ticket unchanged
+          if (groups.length === 0) return ticket;
+          
+          // Update ticket with group colors
+          return {
+            ...ticket,
+            groupColors: groups,
+            groupColor: groups[0]?.color || ticket.groupColor // Keep legacy property
+          };
+        });
+        
+        return { kanban, tickets: ticketsArr };
+      },
+
       addKanbanTicket: (ticket) => set((state) => {
         const kanban = { ...state.kanban };
         // Ensure ticket has an activity/comments array and a customFields object
@@ -200,14 +643,19 @@ export const useAppStore = create(
           customFields: typeof ticket.customFields === 'object' && ticket.customFields !== null ? ticket.customFields : {},
           relatedTickets: cleanupRelationships(Array.isArray(ticket.relatedTickets) ? ticket.relatedTickets : []),
           externalLinks: Array.isArray(ticket.externalLinks) ? ticket.externalLinks : [],
-            groupColor: ticket.groupColor || null, // New property for group color
+          groupColor: ticket.groupColor || null, // Preserve existing group color
+          // Ensure groupColors array is properly initialized
+          groupColors: Array.isArray(ticket.groupColors) ? ticket.groupColors : 
+            (ticket.groupColor ? [{ id: `group-${ticket.id}`, color: ticket.groupColor }] : [])
         };
         kanban.tickets[ticket.id] = ticketWithActivity;
+        
         // Also add to main tickets array if not present
         let ticketsArr = Array.isArray(state.tickets) ? [...state.tickets] : [];
         if (!ticketsArr.find(t => t.id === ticket.id)) {
           ticketsArr.push(ticketWithActivity);
         }
+        
         // Find default column
         let defaultCol = kanban.columns.find(col => col.defaultForNewTickets);
         if (!defaultCol) {
@@ -220,7 +668,10 @@ export const useAppStore = create(
           }
         }
         defaultCol.ticketIds.push(ticket.id);
-        return { kanban, tickets: ticketsArr };
+        
+        // After adding the ticket, sync all group colors
+        const updatedState = { kanban, tickets: ticketsArr };
+        return state._syncGroupColorsForAllTickets(updatedState);
       }),
       /**
        * Assigns a group color to all tickets in a relationship group.
@@ -362,7 +813,40 @@ export const useAppStore = create(
       updateKanbanTicket: (ticket) => set((state) => {
         const kanban = { ...state.kanban };
         kanban.tickets[ticket.id] = { ...kanban.tickets[ticket.id], ...ticket };
-        return { kanban };
+        
+        // Sync group colors after updating the ticket
+        const updatedState = { kanban, tickets: state.tickets };
+        return state._syncGroupColorsForAllTickets(updatedState);
+      }),
+      // New function to update relationships between tickets
+      updateTicketRelationship: (sourceTicketId, targetTicketId, relationType) => set((state) => {
+        // Convert tickets object to array for easier processing
+        const allTickets = Object.values(state.kanban.tickets);
+        
+        // Use the helper function to update both sides of the relationship
+        const updatedTickets = updateReciprocal(sourceTicketId, targetTicketId, relationType, allTickets);
+        
+        // Convert back to object for kanban state
+        const updatedTicketsObj = {};
+        updatedTickets.forEach(ticket => {
+          updatedTicketsObj[ticket.id] = ticket;
+        });
+        
+        // Update the tickets in kanban state
+        const kanban = { ...state.kanban, tickets: updatedTicketsObj };
+        
+        // Also update in legacy tickets array
+        let ticketsArr = [];
+        if (Array.isArray(state.tickets)) {
+          ticketsArr = state.tickets.map(ticket => {
+            const updatedTicket = updatedTickets.find(t => t.id === ticket.id);
+            return updatedTicket || ticket;
+          });
+        }
+        
+        // Sync group colors after updating relationships
+        const updatedState = { kanban, tickets: ticketsArr };
+        return state._syncGroupColorsForAllTickets(updatedState);
       }),
       removeKanbanTicket: (ticketId) => set((state) => {
         const kanban = { ...state.kanban };
@@ -377,6 +861,30 @@ export const useAppStore = create(
         }
         return { kanban, tickets: newTickets };
       }),
+      
+      // New function to remove a ticket from the board but keep it in the main tickets array
+      removeTicketFromBoard: (ticketId) => set((state) => {
+        const kanban = { ...state.kanban };
+        // Remove ticket from all columns but keep it in the tickets object
+        const columns = [...state.kanban.columns].map(col => ({
+          ...col,
+          ticketIds: col.ticketIds.filter(id => id !== ticketId)
+        }));
+        
+        // Remove ticket from the kanban tickets object to prevent it showing on the board
+        if (kanban.tickets[ticketId]) {
+          const { [ticketId]: removedTicket, ...remainingTickets } = kanban.tickets;
+          kanban.tickets = remainingTickets;
+        }
+        
+        return { 
+          kanban: {
+            ...kanban,
+            columns
+          }
+        };
+      }),
+      
       addKanbanColumn: (name) => set(state => {
         const id = nanoid();
         return {
@@ -461,4 +969,8 @@ export const useAppStore = create(
       }),
     }
   )
-)
+  );
+}
+
+// Export the store
+export const useAppStore = createStoreWithStableReferences();

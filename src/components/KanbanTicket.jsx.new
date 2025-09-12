@@ -1,0 +1,287 @@
+import React, { useState, useRef, useMemo, memo } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { useAppStore } from '../store';
+import CardPreviewModal from './CardPreviewModal';
+import { isTicketBlocked, isTicketBlocking } from '../utils/relationshipUtils';
+import { toast } from 'react-toastify';
+import TicketRelationshipIndicator from './TicketRelationshipIndicator';
+
+// Use memo to prevent unnecessary re-renders
+const KanbanTicket = memo(function KanbanTicket({ ticket, colId, position }) {
+  // Create refs for different interactive elements
+  const cardRef = useRef(null);
+  const dragHandleRef = useRef(null);
+  const navigate = useNavigate();
+  
+  // State
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [dragStartTime, setDragStartTime] = useState(0);
+  
+  // Store selectors
+  const updateKanbanTicket = useAppStore((s) => s.updateKanbanTicket);
+  const removeKanbanTicket = useAppStore((s) => s.removeKanbanTicket);
+  const removeTicketFromBoard = useAppStore((s) => s.removeTicketFromBoard);
+  const customers = useAppStore((s) => s.customers) || [];
+  const ticketsInStore = useAppStore((s) => s.kanban.tickets);
+  const allTicketsInSystem = useAppStore((s) => s.tickets);
+  
+  // Memoize relationship status to prevent unnecessary recalculations
+  const allTickets = useMemo(() => {
+    return Object.values(ticketsInStore || {});
+  }, [ticketsInStore]);
+  
+  // Efficiently compute blocked/blocking status
+  const { isBlocked, isBlocking } = useMemo(() => {
+    if (!ticket || !ticket.id) return { isBlocked: false, isBlocking: false };
+    
+    // Check both tickets on the board and all tickets in the system
+    const combinedTickets = [...allTickets];
+    
+    // Add tickets from the main store that aren't already on the board
+    if (Array.isArray(allTicketsInSystem)) {
+      allTicketsInSystem.forEach(systemTicket => {
+        if (!combinedTickets.some(boardTicket => boardTicket.id === systemTicket.id)) {
+          combinedTickets.push(systemTicket);
+        }
+      });
+    }
+    
+    return {
+      isBlocked: isTicketBlocked(ticket.id, combinedTickets),
+      isBlocking: isTicketBlocking(ticket.id, combinedTickets)
+    };
+  }, [
+    ticket?.id, 
+    JSON.stringify(allTickets.map(t => ({ id: t.id, relationships: t.relatedTickets }))),
+    JSON.stringify(Array.isArray(allTicketsInSystem) ? 
+      allTicketsInSystem.map(t => ({ id: t.id, relationships: t.relatedTickets })) : [])
+  ]);
+
+  // Lookup company name from customerId
+  let companyName = '—';
+  if (ticket.customerId) {
+    const customer = customers.find(c => c.id === ticket.customerId);
+    companyName = customer?.companyName || customer?.businessName || '—';
+  }
+  
+  // Sortable hook setup - only for dragging
+  const { 
+    attributes, 
+    listeners, 
+    setNodeRef, 
+    transform, 
+    transition, 
+    isDragging,
+    active
+  } = useSortable({
+    id: ticket.id,
+    data: { 
+      type: 'ticket',
+      ticket,
+      colId
+    }
+  });
+  
+  // Event handlers - with explicit stopPropagation to prevent event bubbling
+  const handlePreviewOpen = (e) => {
+    if (e) e.stopPropagation();
+    
+    // Only open preview if not currently dragging
+    if (!isDragging && !active) {
+      setPreviewOpen(true);
+    }
+  };
+  
+  const togglePriority = (e) => {
+    e.stopPropagation();
+    updateKanbanTicket({ ...ticket, highPriority: !ticket.highPriority });
+  };
+  
+  const handleRemoveFromBoard = (e) => {
+    e.stopPropagation();
+    if (window.confirm('Remove this ticket from the board? (The ticket will still be available in the Customers page)')) {
+      removeTicketFromBoard(ticket.id);
+      toast.success(`Ticket ${ticket.rmaNumber || ticket.id} removed from board`, {
+        position: "bottom-right",
+        autoClose: 3000,
+      });
+    }
+  };
+
+  // Create a separate drag handle to improve usability
+  const DragHandle = () => (
+    <div 
+      ref={dragHandleRef}
+      className="absolute top-0 left-0 w-full h-8 cursor-grab opacity-0"
+      {...attributes}
+      {...listeners}
+    />
+  );
+
+  return (
+    <>
+      <div
+        ref={setNodeRef}
+        style={{
+          transform: CSS.Transform.toString(transform),
+          transition,
+          opacity: isDragging ? 0.5 : 1,
+          zIndex: isDragging ? 50 : 1,
+          position: 'relative',
+        }}
+        className={`
+          bg-white rounded shadow p-3 mb-1 select-none transition-all
+          ${isDragging ? 'ring-2 ring-blue-400 shadow-lg' : ''}
+          ${isBlocked && isBlocking ? 'border-l-8 border-red-500 border-r-8 border-r-amber-500' : 
+            isBlocked ? 'border-l-4 border-red-500' : 
+            isBlocking ? 'border-l-4 border-amber-500' : ''}
+        `}
+        onClick={handlePreviewOpen}
+      >
+        {/* Invisible drag handle at the top of the card */}
+        <DragHandle />
+        
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-bold text-gray-400">#{position + 1}</span>
+          <div className="flex items-center gap-1">
+            {isBlocked && (
+              <span 
+                className="px-2 py-0.5 rounded text-xs font-bold bg-red-100 text-red-700 border border-red-300 flex items-center"
+                title="This ticket is blocked by other tickets that must be completed first"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m0 0v2m0-2h2m-2 0H9m3-3V6a3 3 0 00-3-3H6a3 3 0 00-3 3v7" />
+                </svg>
+                BLOCKED
+              </span>
+            )}
+            {isBlocking && (
+              <span 
+                className="px-2 py-0.5 rounded text-xs font-bold bg-amber-100 text-amber-700 border border-amber-300 flex items-center"
+                title="This ticket is blocking other tickets that depend on it"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                </svg>
+                BLOCKING
+              </span>
+            )}
+            <button
+              className={
+                'ml-1 px-2 py-0.5 rounded text-xs font-bold flex items-center ' +
+                (ticket.highPriority
+                  ? 'bg-red-200 text-red-700 border border-red-400'
+                  : 'bg-gray-100 text-gray-400 border border-gray-200 hover:bg-yellow-100 hover:text-yellow-600')
+              }
+              title={ticket.highPriority ? 'Remove high priority' : 'Mark as high priority'}
+              onClick={togglePriority}
+              tabIndex={0}
+              type="button"
+              style={{ outline: 'none' }}
+              onMouseDown={e => e.stopPropagation()}
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-4 w-4 mr-1"
+                fill={ticket.highPriority ? 'currentColor' : 'none'}
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={ticket.highPriority ? 0 : 2}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"
+                />
+              </svg>
+              {ticket.highPriority && 'HIGH'}
+            </button>
+          </div>
+        </div>
+        
+        {/* Group pill labels if groupColors are set */}
+        {(ticket.groupColors && ticket.groupColors.length > 0) ? (
+          <div className="flex flex-wrap gap-1 mb-2">
+            {Array.from(new Set(ticket.groupColors
+              .filter(g => g && typeof g === 'object' && g.id && g.color)
+              .map(g => g.color)))
+              .map((color, idx) => (
+                <span
+                  key={`color-${idx}-${color.replace('#', '')}`}
+                  className="inline-block px-3 py-0.5 rounded-full text-xs font-semibold"
+                  style={{ 
+                    backgroundColor: color, 
+                    color: '#fff', 
+                    border: `2px solid ${color}` 
+                  }}
+                  title="This ticket is part of a group"
+                >
+                  Group
+                </span>
+              ))
+            }
+          </div>
+        ) : ticket.groupColor ? (
+          <span
+            className="inline-block px-3 py-0.5 rounded-full text-xs font-semibold mb-2 mr-2"
+            style={{ backgroundColor: ticket.groupColor, color: '#fff', border: `2px solid ${ticket.groupColor}` }}
+            title="This ticket is part of a group"
+          >
+            Group
+          </span>
+        ) : null}
+        
+        {/* Ticket content */}
+        <div className="font-bold text-base text-gray-800 truncate">RMA: {ticket.rmaNumber || ticket.rma || '—'}</div>
+        <div className="text-xs text-gray-700 font-semibold truncate">{ticket.item || '—'}</div>
+        <div className="text-xs text-gray-500 truncate">{companyName}</div>
+        {ticket.reason && (
+          <div className="text-xs text-gray-600 truncate"><span className="font-semibold">Reason for Repair:</span> {ticket.reason}</div>
+        )}
+        {ticket.customFields && ticket.customFields.serialNumber && (
+          <div className="text-xs text-gray-600 truncate"><span className="font-semibold">Serial Number:</span> {ticket.customFields.serialNumber}</div>
+        )}
+        {ticket.assignedTo && <div className="text-xs text-gray-400">Assigned: {ticket.assignedTo}</div>}
+        
+        {/* Relationship indicators */}
+        {ticket && ticket.id && (
+          <TicketRelationshipIndicator ticketId={ticket.id} />
+        )}
+        
+        {/* Remove from board button */}
+        <div className="mt-2 flex justify-end">
+          <button
+            onClick={handleRemoveFromBoard}
+            className="text-xs text-gray-500 hover:text-red-500 flex items-center py-1 px-2 rounded hover:bg-gray-100"
+            title="Remove from Kanban board"
+            onMouseDown={e => e.stopPropagation()}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+            Remove from board
+          </button>
+        </div>
+        
+        {/* Visual indicator that the card is draggable */}
+        <div className="absolute top-2 right-2 text-gray-400">
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8h16M4 16h16" />
+          </svg>
+        </div>
+      </div>
+      
+      {/* Preview modal */}
+      <CardPreviewModal 
+        key={ticket.id} 
+        ticket={ticket} 
+        open={previewOpen} 
+        onClose={() => setPreviewOpen(false)} 
+      />
+    </>
+  );
+});
+
+export default KanbanTicket;

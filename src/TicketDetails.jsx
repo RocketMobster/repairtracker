@@ -249,9 +249,20 @@ function TicketDetails({ editModeFromRoute: editModeFromProps }) {
 
   // Handler for updating a related ticket's type or note
   function handleUpdateRelatedTicket(idx, field, value) {
-    setRelatedTickets(relatedTickets => {
-      const updated = [...relatedTickets];
+    setRelatedTickets(prevRelatedTickets => {
+      const updated = [...prevRelatedTickets];
       updated[idx] = { ...updated[idx], [field]: value };
+      
+      // If we're changing the relationship type and we have a ticket ID
+      if (field === 'type' && ticket && ticket.id && updated[idx].id) {
+        // Also update the reciprocal relationship in the related ticket
+        const updateTicketRelationship = useAppStore.getState().updateTicketRelationship;
+        if (typeof updateTicketRelationship === 'function') {
+          // This will update both sides of the relationship
+          updateTicketRelationship(ticket.id, updated[idx].id, value);
+        }
+      }
+      
       return updated;
     });
   }

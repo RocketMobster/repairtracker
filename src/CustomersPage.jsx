@@ -8,6 +8,7 @@ import { useAppStore } from './store';
 import { useNavigate, useParams } from 'react-router-dom';
 import DynamicForm from './DynamicForm';
 import { customerFormSchema } from './formSchemas';
+import { toast } from 'react-toastify';
 
 
 function CustomerForm({ onSave, initial = {}, isEdit }) {
@@ -267,8 +268,23 @@ function CustomerDetails({ customer, onEdit, onNewTicket, onDeleted }) {
                               kanban.columns.unshift(incoming);
                               kanban.columnOrder.unshift('incoming');
                             }
+                            
+                            // Only add the selected ticket if not already on the board
                             if (!incoming.ticketIds.includes(t.id)) {
+                              // Add only the selected ticket to the board
                               useAppStore.getState().addKanbanTicket(t);
+                              
+                              // Show a toast notification
+                              toast.success(`Added ticket RMA #${t.rmaNumber || t.rma || t.id} to the Kanban board`, {
+                                position: "bottom-right",
+                                autoClose: 3000,
+                              });
+                            } else {
+                              // Ticket is already on the board
+                              toast.info(`Ticket RMA #${t.rmaNumber || t.rma || t.id} is already on the Kanban board`, {
+                                position: "bottom-right",
+                                autoClose: 3000,
+                              });
                             }
                           }}
                         >Restore to Board</button>

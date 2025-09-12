@@ -1,0 +1,332 @@
+import React, { useState, useRef } from 'react';
+import '../components/kanban-animations.css';
+import { useAppStore } from '../store';
+import { DndContext, closestCorners, PointerSensor, useSensor, useSensors, DragOverlay, useDroppable } from '@dnd-kit/core';
+import KanbanColumn from './KanbanColumn';
+import KanbanTicket from './KanbanTicket';
+import BlockingConfigPanel from './BlockingConfigPanel';
+import BlockingNotificationTooltip from './BlockingNotificationTooltip';
+
+// KanbanBoard: renders columns and tickets
+export default function KanbanBoard() {
+  const kanban = useAppStore((s) => s.kanban);
+  const [removingColId, setRemovingColId] = useState(null);
+  const removeTimeoutRef = useRef();
+  const [search, setSearch] = useState('');
+  const [activeDragId, setActiveDragId] = useState(null);
+  const [sortBy, setSortBy] = useState('');
+  const [filterAssignee, setFilterAssignee] = useState('');
+  
+  // Access the current user's role
+  const currentUser = useAppStore((s) => s.currentUser);
+  const isAdmin = currentUser?.role === 'Admin';
+  const [colUi, setColUi] = useState({});
+  
+  // Get the active drag ticket
+  const activeTicket = activeDragId ? kanban.tickets[activeDragId] : null;
+
+  // Configure drag sensor with delay to avoid accidental drags
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        delay: 150,
+        tolerance: 8,
+      },
+    })
+  );
+
+  // Function to add a new column to the kanban board
+  const addColumn = () => {
+    const newCol = {
+      id: 'col-' + Date.now(),
+      name: 'New Column',
+      ticketIds: [],
+      wipLimit: null,
+      maxTime: null
+    };
+    useAppStore.getState().addKanbanColumn(newCol);
+  };
+
+  // Remove column with animation
+  const removeColumn = (id) => {
+    setRemovingColId(id);
+    clearTimeout(removeTimeoutRef.current);
+    removeTimeoutRef.current = setTimeout(() => {
+      useAppStore.getState().removeKanbanColumn(id);
+      setRemovingColId(null);
+    }, 500); // match animation duration in CSS
+  };
+
+  // Start column rename
+  const startRenameColumn = (id) => {
+    setColUi(prev => ({
+      ...prev,
+      [id]: { ...prev[id], renaming: true, title: kanban.columns.find(c => c.id === id)?.name || '' }
+    }));
+  };
+
+  // Save column rename
+  const saveRenameColumn = (id) => {
+    if (colUi[id] && colUi[id].title) {
+      useAppStore.getState().updateKanbanColumn(id, { name: colUi[id].title });
+    }
+    setColUi(prev => ({ ...prev, [id]: { ...prev[id], renaming: false } }));
+  };
+
+  // Update column WIP limit
+  const updateWipLimit = (id, wipLimit) => {
+    useAppStore.getState().updateKanbanColumn(id, { wipLimit });
+  };
+
+  // Move column to a new position
+  const moveColumn = (id, newIndex) => {
+    useAppStore.getState().moveKanbanColumn(id, newIndex);
+  };
+
+  // Filter tickets by search, assignee
+  const ticketMatches = (ticket) => {
+    if (!ticket) return false;
+    
+    // Filter by search text
+    if (search) {
+      const searchLower = search.toLowerCase();
+      const searchTerms = [
+        ticket.rmaNumber,
+        ticket.rma,
+        ticket.company,
+        ticket.customerName,
+        ticket.email,
+        ticket.phone,
+        ticket.item,
+        ticket.reason,
+        ticket.status,
+        ticket.assignedTo,
+        ticket.notes,
+      ];
+      
+      // Also search custom fields
+      if (ticket.customFields) {
+        Object.values(ticket.customFields).forEach(v => {
+          if (v) searchTerms.push(v);
+        });
+      }
+      
+      const matchesSearch = searchTerms.some(
+        term => term && term.toString().toLowerCase().includes(searchLower)
+      );
+      
+      if (!matchesSearch) return false;
+    }
+    
+    // Filter by assignee
+    if (filterAssignee && ticket.assignedTo !== filterAssignee) {
+      return false;
+    }
+    
+    return true;
+  };
+  
+  // Sort ticket IDs based on selected criteria
+  const sortTicketIds = (ids) => {
+    if (sortBy === 'priority') {
+      return [...ids].sort((a, b) => {
+        const ta = kanban.tickets[a];
+        const tb = kanban.tickets[b];
+        // Sort high priority first, then by company name
+        if (ta.highPriority !== tb.highPriority) {
+          return ta.highPriority ? -1 : 1;
+        }
+        return (ta.company || '').localeCompare(tb.company || '');
+      });
+    }
+    if (sortBy === 'date') {
+      return [...ids].sort((a, b) => {
+        const ta = kanban.tickets[a];
+        const tb = kanban.tickets[b];
+        return new Date(tb.createdAt || 0) - new Date(ta.createdAt || 0);
+      });
+    }
+    if (sortBy === 'name') {
+      return [...ids].sort((a, b) => {
+        const ta = kanban.tickets[a];
+        const tb = kanban.tickets[b];
+        return (ta.company || '').localeCompare(tb.company || '');
+      });
+    }
+    if (sortBy === 'rma') {
+      return [...ids].sort((a, b) => {
+        const ta = kanban.tickets[a];
+        const tb = kanban.tickets[b];
+        return (ta.rmaNumber || ta.rma || '').localeCompare(tb.rmaNumber || tb.rma || '');
+      });
+    }
+    // Default: use manual order
+    return ids;
+  };
+
+  // Get a list of all assignees from ticket data
+  const allAssignees = Object.values(kanban.tickets || {})
+    .filter(t => t && t.assignedTo)
+    .map(t => t.assignedTo)
+    .filter((name, i, arr) => arr.indexOf(name) === i)
+    .sort((a, b) => a.localeCompare(b));
+
+  // Get list of tickets visible in each column after filtering
+  const visibleTicketsInColumns = kanban.columns.reduce((acc, col) => {
+    const visibleIds = col.ticketIds.filter(id => {
+      const ticket = kanban.tickets[id];
+      return ticket && ticketMatches(ticket);
+    });
+    // Apply sorting if selected
+    acc[col.id] = sortTicketIds(visibleIds);
+    return acc;
+  }, {});
+
+  // Drag-n-drop handling
+  const handleDragStart = (event) => {
+    setActiveDragId(event.active.id);
+  };
+
+  const handleDragEnd = (event) => {
+    setActiveDragId(null);
+    const { active, over } = event;
+    if (!over || !active) return;
+
+    // Get the ticket & target column
+    const ticketId = active.id;
+    const targetColId = over.id.split('--')[0];
+    
+    // Handle moving a ticket to a column
+    if (targetColId && over.id.includes('--column')) {
+      // Add to the end of the column
+      const moveTicket = useAppStore.getState().moveTicket;
+      moveTicket(ticketId, targetColId, Number.MAX_SAFE_INTEGER);
+    }
+    
+    // Handle moving a ticket to a specific position
+    else if (targetColId && over.id.includes('indicator-')) {
+      const [, , posStr] = over.id.split('-');
+      const position = parseInt(posStr, 10);
+      const moveTicket = useAppStore.getState().moveTicket;
+      moveTicket(ticketId, targetColId, position);
+    }
+  };
+
+  // Get columns in order
+  const orderedColumns = kanban.columnOrder
+    .map(id => kanban.columns.find(col => col.id === id))
+    .filter(Boolean);
+  
+  // Check if any tickets match the filters
+  const anyMatch = kanban.columns.some(col => 
+    visibleTicketsInColumns[col.id] && visibleTicketsInColumns[col.id].length > 0
+  );
+
+  // Function to get filtered ticket IDs for a column 
+  const getFilteredTicketIds = (column) => {
+    return visibleTicketsInColumns[column.id] || [];
+  };
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-4 bg-gray-800 p-4 rounded-lg shadow-md">
+        <h1 className="text-2xl font-semibold text-white">Repair Tracking Board</h1>
+        <div className="flex space-x-3">
+          <input
+            aria-label="Search tickets"
+            type="search"
+            placeholder="Search tickets..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="bg-gray-700 p-2 rounded-lg text-white placeholder-gray-400 flex-grow max-w-lg"
+          />
+          {allAssignees.length > 0 && (
+            <select
+              className="p-2 rounded bg-gray-700 text-white outline-none"
+              value={filterAssignee}
+              onChange={(e) => setFilterAssignee(e.target.value)}
+            >
+              <option value="">All assignees</option>
+              {allAssignees.map(name => (
+                <option key={name} value={name}>{name}</option>
+              ))}
+            </select>
+          )}
+          <select
+            className="p-2 rounded bg-gray-700 text-white outline-none"
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value)}
+          >
+            <option value="">Sort: Manual</option>
+            <option value="priority">Sort: Priority</option>
+            <option value="date">Sort: Date</option>
+            <option value="name">Sort: Company</option>
+            <option value="rma">Sort: RMA</option>
+          </select>
+        </div>
+      </div>
+
+      <DndContext 
+        sensors={sensors} 
+        collisionDetection={closestCorners}
+        onDragStart={handleDragStart}
+        onDragEnd={handleDragEnd}
+      >
+        <div className="flex overflow-x-auto space-x-4 pb-4 pt-2 px-2">
+          {orderedColumns.length === 0 && (
+            <div className="text-gray-400 italic">No columns. Add one to get started.</div>
+          )}
+          {orderedColumns.map((column, colIdx) => (
+            <KanbanColumn
+              key={column.id}
+              id={column.id}
+              data={column}
+              onRemove={removeColumn}
+              visibleTicketIds={getFilteredTicketIds(column)}
+              isRemoving={removingColId === column.id}
+              colUi={colUi}
+              setColUi={setColUi}
+              onSort={sortBy}
+            />
+          ))}
+        </div>
+        <DragOverlay>
+          {activeTicket && (
+            <div style={{ opacity: 0.6, boxShadow: '0 8px 32px 0 rgba(0,0,0,0.25)' }}>
+              <KanbanTicket ticket={activeTicket} colId={null} position={0} />
+            </div>
+          )}
+        </DragOverlay>
+      </DndContext>
+      {search && !anyMatch && (
+        <div className="text-center text-red-500 mt-4">No tickets match your search.</div>
+      )}
+      
+      {/* Display the blocking configuration panel */}
+      <BlockingConfigPanel />
+      
+      {/* Display notifications about blocking relationships */}
+      <BlockingNotificationTooltip />
+    </div>
+  );
+}
+
+// DropIndicator for per-ticket drop targeting
+export function DropIndicator({ colId, index }) {
+  const { isOver, setNodeRef } = useDroppable({ id: `indicator-${colId}-${index}` });
+  return (
+    <div
+      ref={setNodeRef}
+      style={{
+        height: 16,
+        zIndex: 50,
+        pointerEvents: 'auto',
+        position: 'relative',
+      }}
+      className={
+        'w-full transition-all ' +
+        (isOver ? 'bg-blue-600 rounded my-1 shadow-lg' : '')
+      }
+    />
+  );
+}

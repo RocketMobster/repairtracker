@@ -140,7 +140,7 @@ export function getTicketFormSchema(options = {}) {
   if (!options) options = {};
   
   // Extract customFields from options, defaulting to empty array
-  const customFields = Array.isArray(options) ? options : (options.customFields || []);
+  const customFields = Array.isArray(options.customFields) ? options.customFields : [];
   
   // Merge built-in fields with custom fields (custom fields come last, can override by name)
   const builtIn = [

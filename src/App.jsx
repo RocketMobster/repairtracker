@@ -6,6 +6,8 @@ import KanbanBoard from './components/KanbanBoard';
 import CustomersPage from './CustomersPage';
 import { useAppStore } from './store';
 import { initializeSampleData } from './sampleData';
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 function Dashboard() {
   return <div className="p-8"><h2 className="text-2xl font-bold mb-2">Dashboard</h2><p>Overview and widgets go here.</p></div>;
@@ -75,6 +77,7 @@ function App() {
   const customers = useAppStore(s => s.customers);
   const setTickets = useAppStore(s => s.setTickets);
   const setCustomers = useAppStore(s => s.setCustomers);
+  const deduplicateAllRelationships = useAppStore(s => s.deduplicateAllRelationships);
 
   // Initialize sample data when app loads if store is empty
   useEffect(() => {
@@ -82,6 +85,10 @@ function App() {
     console.log('Current tickets:', tickets?.length || 0, 'Current customers:', customers?.length || 0);
     const initialized = initializeSampleData({ tickets, customers, setTickets, setCustomers });
     console.log('Sample data initialization result:', initialized ? 'Data initialized' : 'No initialization needed');
+    
+    // Deduplicate all relationships in existing tickets
+    deduplicateAllRelationships();
+    console.log('Deduplicated all ticket relationships');
   }, []);
 
   function handleLogout() {
@@ -124,6 +131,7 @@ function App() {
         <Route path="/login" element={!currentUser ? <Login /> : <Navigate to="/" />} />
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
+      <ToastContainer position="bottom-right" autoClose={3000} />
     </div>
   );
 }

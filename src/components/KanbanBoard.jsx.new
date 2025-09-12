@@ -10,17 +10,8 @@ import {
   DragOverlay,
   MouseSensor,
   TouchSensor,
-  useDroppable,
-  pointerWithin,
-  rectIntersection
+  useDroppable 
 } from '@dnd-kit/core';
-import {
-  SortableContext,
-  verticalListSortingStrategy,
-  horizontalListSortingStrategy,
-  arrayMove
-} from '@dnd-kit/sortable';
-import { toast } from 'react-toastify';
 import KanbanColumn from './KanbanColumn';
 import KanbanTicket from './KanbanTicket';
 import BlockingConfigPanel from './BlockingConfigPanel';
@@ -48,16 +39,16 @@ export default function KanbanBoard() {
   // Configure optimized sensors for better drag and drop experience
   const sensors = useSensors(
     useSensor(MouseSensor, {
-      // Lower activation constraint for better responsiveness
+      // Require the mouse to move by 10 pixels before activating
       activationConstraint: {
-        distance: 3, // Reduced from 5 for more responsive drag initiation
+        distance: 10,
       },
     }),
     useSensor(TouchSensor, {
-      // Reduced delay for more responsive mobile experience
+      // Press delay of 250ms, with tolerance of 5px of movement
       activationConstraint: {
-        delay: 150, // Reduced from 200ms for better mobile responsiveness
-        tolerance: 5, // Slightly reduced tolerance for better precision
+        delay: 250,
+        tolerance: 5,
       },
     })
   );
@@ -98,23 +89,7 @@ export default function KanbanBoard() {
     
     // Set the active drag ID
     setActiveDragId(event.active.id);
-    
-    // Enhanced logging
-    console.log('Drag started:', {
-      activeId: event.active.id,
-      activeData: event.active.data?.current,
-      timestamp: now
-    });
-
-    // Find source column for the ticket
-    const sourceColumn = kanban.columns.find(col => col.ticketIds.includes(event.active.id));
-    if (sourceColumn) {
-      console.log('Source column:', {
-        id: sourceColumn.id,
-        name: sourceColumn.name,
-        position: sourceColumn.ticketIds.indexOf(event.active.id)
-      });
-    }
+    console.log('Drag started:', event.active.id);
   };
   
   // Handle drag end with enhanced error handling and debugging
@@ -147,148 +122,43 @@ export default function KanbanBoard() {
     });
     
     try {
-      // Extract the target information
+      // Extract the column ID from the over ID
       let targetColId, position;
       
-      // Case 1: Dropped on a drop indicator
-      if (typeof over.id === 'string' && over.id.includes('indicator-')) {
-        // Dropped on a position indicator
-        const parts = over.id.split('-');
-        targetColId = parts[1];
-        position = parseInt(parts[2], 10);
-        
-        // Check if the position is valid and fall back to 0 if it's not
-        if (isNaN(position)) {
-          console.warn('Invalid position, defaulting to 0');
-          position = 0;
+      if (typeof over.id === 'string') {
+        if (over.id.includes('--column')) {
+          // Dropped directly on a column
+          targetColId = over.id.split('--')[0];
+          position = Number.MAX_SAFE_INTEGER; // Add to the end of the column
+        } else if (over.id.includes('indicator-')) {
+          // Dropped on a position indicator
+          const parts = over.id.split('-');
+          targetColId = parts[1];
+          position = parseInt(parts[2], 10);
+        } else if (!over.id.includes('-')) {
+          // Dropped directly on a column (fallback)
+          targetColId = over.id;
+          position = Number.MAX_SAFE_INTEGER;
         }
-        
-        // Find source column and position for logging
-        let sourceColId = null;
-        let sourcePosition = -1;
-        kanban.columns.forEach(column => {
-          const idx = column.ticketIds.indexOf(ticketId);
-          if (idx !== -1) {
-            sourceColId = column.id;
-            sourcePosition = idx;
-          }
-        });
-        
-        console.log(`Moving ticket ${ticketId} from column ${sourceColId} position ${sourcePosition} to column ${targetColId} position ${position}`);
-        
-        // Log the direction of the move if in the same column
-        if (sourceColId === targetColId) {
-          if (sourcePosition < position) {
-            console.log(`This is a DOWNWARD move within the same column`);
-          } else if (sourcePosition > position) {
-            console.log(`This is an UPWARD move within the same column`);
-          } else {
-            console.log(`No position change (dropped in same position)`);
-          }
-        }
-        
-        // Move the ticket to the specified position in the column
-        const moveTicket = useAppStore.getState().moveTicket;
-        
-        // Special handling for moves to the top position
-        if (position === 0) {
-          console.log("SPECIAL HANDLING: Moving to top position");
-          // Ensure the ticket actually moves to the first position
-          moveTicket(ticketId, targetColId, 0);
-        }
-        // Special handling for upward movement
-        else if (sourceColId === targetColId && sourcePosition > position) {
-          console.log("SPECIAL HANDLING: Upward movement detected");
-          // Force re-render to fix issues with upward dragging
-          moveTicket(ticketId, targetColId, position);
-        } else {
-          // Standard handling for other movements
-          moveTicket(ticketId, targetColId, position);
-        }
-        return;
       }
       
-      // Case 2: Dropped directly on a column
-      if (typeof over.id === 'string' && over.id.includes('--column')) {
-        // Dropped directly on a column
-        targetColId = over.id.split('--')[0];
-        position = Number.MAX_SAFE_INTEGER; // Add to the end of the column
-        
-        // Move the ticket to the end of the column
+      if (targetColId && position !== undefined) {
+        console.log(`Moving ticket ${ticketId} to column ${targetColId} at position ${position}`);
+        // Use the moveTicket function from the store
         const moveTicket = useAppStore.getState().moveTicket;
-        console.log(`Moving ticket ${ticketId} to the end of column ${targetColId}`);
         moveTicket(ticketId, targetColId, position);
-        return;
+      } else {
+        console.warn('Could not determine target column or position', over.id);
       }
-      
-      // Case 3: Dropped on a ticket
-      if (typeof over.id === 'string' && !over.id.includes('-') && !over.id.includes('--')) {
-        // Determine which column this ticket is in
-        let targetTicketColId = null;
-        let sourceColId = null;
-        
-        // Find the column containing the dragged ticket and the target ticket
-        kanban.columns.forEach(column => {
-          if (column.ticketIds.includes(ticketId)) {
-            sourceColId = column.id;
-          }
-          if (column.ticketIds.includes(over.id)) {
-            targetTicketColId = column.id;
-          }
-        });
-        
-        if (targetTicketColId) {
-          // Find the position of the target ticket
-          const column = kanban.columns.find(col => col.id === targetTicketColId);
-          if (column) {
-            const targetIndex = column.ticketIds.indexOf(over.id);
-            if (targetIndex !== -1) {
-              // Check if we should place before or after the target ticket
-              // (For simplicity, always place after the target ticket for now)
-              const moveTicket = useAppStore.getState().moveTicket;
-              console.log(`Moving ticket ${ticketId} to column ${targetTicketColId} at position ${targetIndex + 1}`);
-              moveTicket(ticketId, targetTicketColId, targetIndex + 1);
-              return;
-            }
-          }
-        }
-      }
-      
-      // Case 4: Try to infer target column from closest parent
-      // This helps when the drop indicator wasn't directly hit but we're close to a column
-      if (over && over.data && over.data.current) {
-        const overData = over.data.current;
-        
-        // If we have column data in the over target
-        if (overData.type === 'column' || overData.colId) {
-          targetColId = overData.id || overData.colId;
-          position = Number.MAX_SAFE_INTEGER; // Default to end of column
-          
-          if (targetColId) {
-            const moveTicket = useAppStore.getState().moveTicket;
-            console.log(`Moving ticket ${ticketId} to column ${targetColId} at position ${position} (inferred from parent)`);
-            moveTicket(ticketId, targetColId, position);
-            return;
-          }
-        }
-      }
-      
-      // If we got here, we couldn't determine where to move the ticket
-      console.warn('Could not determine target column or position', over.id);
-      
     } catch (error) {
       console.error('Error in drag end handler:', error);
       toast.error('Failed to move the ticket. Please try again.');
     }
-  }, [kanban.columns]);
+  }, []);
   
   // Handle drag cancel
-  const handleDragCancel = (event) => {
-    console.log('Drag cancelled', {
-      activeId: activeDragId, 
-      timestamp: Date.now(),
-      reason: event?.reason || 'Unknown reason'
-    });
+  const handleDragCancel = () => {
+    console.log('Drag cancelled');
     setActiveDragId(null);
     setLastDragEnd(Date.now());
   };
@@ -457,39 +327,24 @@ export default function KanbanBoard() {
             strategy: 'always',
           },
         }}
-        modifiers={[
-          // Improve dragging responsiveness
-          ({transform}) => ({
-            ...transform,
-            y: transform.y, // Allow full vertical movement
-            scaleX: 1,
-            scaleY: 1
-          })
-        ]}
       >
         <div className="flex overflow-x-auto space-x-4 pb-4 pt-2 px-2 flex-1 min-h-0">
           {orderedColumns.length === 0 && (
             <div className="text-gray-400 italic">No columns. Add one to get started.</div>
           )}
-          {/* Add SortableContext for columns */}
-          <SortableContext 
-            items={orderedColumns.map(col => col.id)}
-            strategy={horizontalListSortingStrategy}
-          >
-            {orderedColumns.map((column, colIdx) => (
-              <KanbanColumn
-                key={column.id}
-                id={column.id}
-                data={column}
-                onRemove={removeColumn}
-                visibleTicketIds={getFilteredTicketIds(column)}
-                isRemoving={removingColId === column.id}
-                colUi={colUi}
-                setColUi={setColUi}
-                onSort={sortBy}
-              />
-            ))}
-          </SortableContext>
+          {orderedColumns.map((column, colIdx) => (
+            <KanbanColumn
+              key={column.id}
+              id={column.id}
+              data={column}
+              onRemove={removeColumn}
+              visibleTicketIds={getFilteredTicketIds(column)}
+              isRemoving={removingColId === column.id}
+              colUi={colUi}
+              setColUi={setColUi}
+              onSort={sortBy}
+            />
+          ))}
         </div>
         <DragOverlay dropAnimation={null}>
           {activeTicket && (
@@ -530,39 +385,24 @@ export function DropIndicator({ colId, index }) {
     }
   });
   
-  // Special treatment for the first drop indicator (index 0)
-  const isFirstDropSpot = index === 0;
-  
   return (
     <div
       ref={setNodeRef}
       data-colid={colId}
       data-index={index}
       style={{
-        // Make first drop spot larger and more visible
-        height: isOver ? 60 : isFirstDropSpot ? 30 : 20,
-        zIndex: isOver ? 60 : isFirstDropSpot ? 55 : 50,
-        pointerEvents: 'auto', // Always enable pointer events
+        height: isOver ? 40 : 8,
+        zIndex: isOver ? 60 : 50,
+        pointerEvents: 'auto',
         position: 'relative',
-        transition: 'all 0.15s ease-in-out',
-        marginTop: isOver ? 10 : isFirstDropSpot ? 8 : 5, 
-        marginBottom: isOver ? 10 : isFirstDropSpot ? 8 : 5,
-        cursor: 'pointer',
+        transition: 'all 0.2s ease-in-out',
+        marginTop: isOver ? 8 : 0,
+        marginBottom: isOver ? 8 : 0,
       }}
       className={
-        'w-full rounded-md flex items-center justify-center ' +
-        (isOver 
-          ? 'bg-blue-500 shadow-md animate-pulse' 
-          : isFirstDropSpot 
-            ? 'bg-blue-300 hover:bg-blue-400 hover:h-28 hover:my-4' 
-            : 'bg-blue-200 hover:bg-blue-300 hover:h-24 hover:my-3')
+        'w-full rounded-md ' +
+        (isOver ? 'bg-blue-500 shadow-md animate-pulse' : 'bg-transparent hover:bg-blue-200')
       }
-    >
-      {isOver ? (
-        <div className="h-2 w-3/4 bg-white rounded animate-pulse"></div>
-      ) : (
-        <div className={`${isFirstDropSpot ? 'h-2' : 'h-1'} w-1/2 ${isFirstDropSpot ? 'bg-blue-500' : 'bg-blue-300'} rounded`}></div>
-      )}
-    </div>
+    />
   );
 }
