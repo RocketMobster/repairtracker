@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.9.3] - 2025-09-12
+### Fixed
+- UI:
+  - Fixed z-index issue where the top drop indicator of columns would overlap the Relationship Blocking Config menu
+
 ## [0.9.2] - 2025-09-12
 ### Fixed
 - Relationship Blocking:

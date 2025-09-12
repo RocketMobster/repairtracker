@@ -72,7 +72,7 @@ export default function BlockingConfigPanel() {
   if (!isExpanded) {
     return (
       <button 
-        className="fixed bottom-4 right-4 bg-blue-600 text-white p-2 rounded-full shadow-lg z-50 flex items-center justify-center"
+        className="fixed bottom-4 right-4 bg-blue-600 text-white p-2 rounded-full shadow-lg z-[100] flex items-center justify-center"
         onClick={() => setIsExpanded(true)}
         title="Blocking Configuration"
       >
@@ -85,7 +85,7 @@ export default function BlockingConfigPanel() {
   }
   
   return (
-    <div className="fixed bottom-4 right-4 bg-white p-4 rounded shadow-lg z-50 w-80">
+    <div className="fixed bottom-4 right-4 bg-white p-4 rounded shadow-lg z-[100] w-80">
       <div className="flex justify-between items-center mb-3">
         <h3 className="font-bold text-lg">Relationship Blocking Config</h3>
         <button 
