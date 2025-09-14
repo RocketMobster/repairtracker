@@ -1,4 +1,112 @@
 import { create } from 'zustand'
+
+// NUCLEAR OPTION: Completely isolated notification system with unique storage
+// This approach completely bypasses the normal state management for notifications
+if (typeof window !== 'undefined') {
+  // Initialize or get the notification system
+  if (!window._notificationSystem) {
+    // Create the notification system
+    window._notificationSystem = {
+      // Store actual notifications
+      notifications: [],
+      
+      // Add a notification with automatic deduplication
+      addNotification: function(notification) {
+        // Check if notifications are disabled
+        if (this.settings.disabled) {
+          console.log('🚫 NOTIFICATION SYSTEM: Notifications are disabled, skipping');
+          return false;
+        }
+        
+        // Ensure we have required fields
+        const notificationWithDefaults = {
+          id: `notification_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
+          timestamp: Date.now(),
+          read: false,
+          ...notification
+        };
+        
+        // Create a signature for deduplication
+        const signature = notification.relatedTicketId && notification.ticketId
+          ? `${notification.relatedTicketId}_${notification.ticketId}_${notification.fromColumn}_${notification.toColumn}`
+          : notification.id;
+        
+        // Check for duplicates - if found, don't add
+        const isDuplicate = this.notifications.some(n => {
+          // Create signature for existing notification
+          const existingSignature = n.relatedTicketId && n.ticketId
+            ? `${n.relatedTicketId}_${n.ticketId}_${n.fromColumn}_${n.toColumn}`
+            : n.id;
+          
+          // If signatures match and it's recent (within 30 seconds), consider it a duplicate
+          return existingSignature === signature && 
+                 (notificationWithDefaults.timestamp - n.timestamp < 30000);
+        });
+        
+        if (isDuplicate) {
+          console.log('� NOTIFICATION SYSTEM: Prevented duplicate', signature);
+          return false;
+        }
+        
+        // Add the notification
+        this.notifications.unshift(notificationWithDefaults);
+        
+        // Keep only the last 50 notifications
+        if (this.notifications.length > 50) {
+          this.notifications = this.notifications.slice(0, 50);
+        }
+        
+        console.log('✅ NOTIFICATION SYSTEM: Added notification', signature);
+        return true;
+      },
+      
+      // Mark a notification as read
+      markRead: function(id) {
+        this.notifications = this.notifications.map(n => 
+          n.id === id ? { ...n, read: true } : n
+        );
+        return true;
+      },
+      
+      // Mark all notifications as read
+      markAllRead: function() {
+        this.notifications = this.notifications.map(n => ({ ...n, read: true }));
+        return true;
+      },
+      
+      // Clear all notifications
+      clearAll: function() {
+        this.notifications = [];
+        return true;
+      },
+      
+      // Get all notifications
+      getAll: function() {
+        return [...this.notifications];
+      },
+      
+      // Settings
+      settings: {
+        // Ensure notifications start enabled by default
+        disabled: false
+      },
+      
+      // Toggle disabled state
+      toggleDisabled: function() {
+        this.settings.disabled = !this.settings.disabled;
+        console.log(`🔧 NOTIFICATION SYSTEM: Settings updated - disabled=${this.settings.disabled}`);
+        return this.settings.disabled;
+      },
+      
+      // Get disabled state
+      isDisabled: function() {
+        return this.settings.disabled;
+      }
+    };
+    
+    console.log('🔄 NOTIFICATION SYSTEM: Initialized isolated notification system');
+  }
+}
 import { persist } from 'zustand/middleware'
 import { nanoid } from 'nanoid';
 import { 
@@ -28,8 +136,13 @@ const createStoreWithStableReferences = () => {
         // Blocking system - track notifications
         lastBlockingNotifications: {},
         
-        // Notification system for related ticket status changes
+        // NUCLEAR OPTION: No longer using local state for notifications
+        // This is left empty for backward compatibility
         notifications: [],
+        
+        // TEMPORARY: Developer setting to disable notifications (remove in production)
+        // Now managed by isolated notification system, but kept for compatibility
+        devNotificationsDisabled: false,
         
         // Relationship blocking configuration
         blockingConfig: {
@@ -77,31 +190,92 @@ const createStoreWithStableReferences = () => {
       setPlugins: (plugins) => set({ plugins }),
       setRolePermissions: (rolePermissions) => set({ rolePermissions }),
       
-      // --- Notification System ---
-      addNotification: (notification) => set((state) => ({
-        notifications: [
-          { 
-            id: nanoid(), 
-            timestamp: Date.now(), 
-            read: false, 
-            ...notification 
-          },
-          ...state.notifications
-        ].slice(0, 50) // Keep last 50 notifications
-      })),
+      // --- NUCLEAR OPTION: Notification System ---
+      // These methods are just wrappers around the global notification system
       
-      markNotificationRead: (id) => set((state) => ({
-        notifications: state.notifications.map(n => 
-          n.id === id ? { ...n, read: true } : n
-        )
-      })),
+      // Get notifications from the isolated system
+      getNotifications: () => {
+        if (typeof window !== 'undefined' && window._notificationSystem) {
+          return window._notificationSystem.getAll();
+        }
+        return [];
+      },
       
-      markAllNotificationsRead: () => set((state) => ({
-        notifications: state.notifications.map(n => ({ ...n, read: true }))
-      })),
+      // Check if notifications are disabled (source of truth = isolated system)
+      areNotificationsDisabled: () => {
+        if (typeof window !== 'undefined' && window._notificationSystem) {
+          const disabled = window._notificationSystem.isDisabled();
+          // keep local mirror in sync for UI selectors
+          if (get().devNotificationsDisabled !== disabled) {
+            set({ devNotificationsDisabled: disabled });
+          }
+          return disabled;
+        }
+        return get().devNotificationsDisabled ?? false;
+      },
       
-      clearNotifications: () => set({ notifications: [] }),
-
+      // Explicitly ensure notifications are enabled at startup
+      ensureNotificationsEnabled: () => {
+        if (typeof window !== 'undefined' && window._notificationSystem) {
+          // Explicitly set to enabled (false = not disabled)
+          if (window._notificationSystem.settings.disabled) {
+            window._notificationSystem.settings.disabled = false;
+            console.log('🔧 NOTIFICATION SYSTEM: Force enabled at startup');
+          }
+          // Update the Zustand state to match
+          set({ devNotificationsDisabled: false });
+          return true;
+        }
+        return false;
+      },
+      
+      // Add a notification to the isolated system
+      addNotification: (notification) => {
+        if (typeof window !== 'undefined' && window._notificationSystem) {
+          // First check the disabled state before attempting to add
+          if (window._notificationSystem.isDisabled()) {
+            console.log('🔄 NOTIFICATION SYSTEM: Notifications disabled, skipping notification:', notification.title);
+            return false;
+          }
+          return window._notificationSystem.addNotification(notification);
+        }
+        return false;
+      },
+      
+      // Mark a notification as read
+      markNotificationRead: (id) => {
+        if (typeof window !== 'undefined' && window._notificationSystem) {
+          window._notificationSystem.markRead(id);
+        }
+      },
+      
+      // Mark all notifications as read
+      markAllNotificationsRead: () => {
+        if (typeof window !== 'undefined' && window._notificationSystem) {
+          window._notificationSystem.markAllRead();
+        }
+      },
+      
+      // Clear all notifications
+      clearNotifications: () => {
+        if (typeof window !== 'undefined' && window._notificationSystem) {
+          window._notificationSystem.clearAll();
+        }
+      },
+      
+      // Toggle notifications disabled state
+      toggleDevNotifications: () => {
+        if (typeof window !== 'undefined' && window._notificationSystem) {
+          const newState = window._notificationSystem.toggleDisabled();
+          set({ devNotificationsDisabled: newState });
+          return newState;
+        }
+        // Fallback: toggle mirror only
+        const newMirror = !get().devNotificationsDisabled;
+        set({ devNotificationsDisabled: newMirror });
+        return newMirror;
+      },
+      
       // --- Kanban Board State ---
       kanban: {
         columns: [
@@ -493,62 +667,79 @@ const createStoreWithStableReferences = () => {
         
         // Notify about status change to related tickets if moving to a different column
         if (fromCol.id !== toCol.id) {
-          // Find all tickets that are related to the moved ticket
-          const relatedTicketIds = [];
-          
-          // Check in both the kanban tickets and the global tickets array
-          const allTickets = [...Object.values(state.kanban.tickets || {}), ...(state.tickets || [])];
-          
-          allTickets.forEach(ticket => {
-            if (ticket && ticket.id !== ticketId && Array.isArray(ticket.relatedTickets)) {
+          // Check if notifications are disabled in developer mode
+          if (state.devNotificationsDisabled) {
+            console.log('Notifications disabled in developer mode - skipping notification generation');
+          } else {
+            // ULTRA EXTREME APPROACH: Global notification registry with atomic updates
+            
+            // First, get the moved ticket information
+            const movedTicket = state.kanban.tickets[ticketId] || 
+                               (Array.isArray(state.tickets) ? state.tickets.find(t => t.id === ticketId) : null);
+            
+            // Get all tickets in the system for relationship checking
+            const allTickets = [...Object.values(state.kanban.tickets || {}), ...(state.tickets || [])];
+            
+            // Create a Set to store related ticket IDs - using a Set ensures we don't have duplicates
+            const relatedTicketIdsSet = new Set();
+            
+            // Debug information
+            console.log(`Looking for relationships with ticket ${ticketId}`);
+            
+            // For each ticket in the system, check if it has a relationship with the moved ticket
+            // but NOT both directions to avoid duplicates
+            allTickets.forEach(ticket => {
+              // Skip the moved ticket itself
+              if (!ticket || ticket.id === ticketId) return;
+              
+              // Check if ticket has relatedTickets array
+              if (!Array.isArray(ticket.relatedTickets)) return;
+              
               // Check if this ticket has a relationship with the moved ticket
               const hasRelationship = ticket.relatedTickets.some(rel => {
                 const relId = typeof rel === 'object' ? rel.id : rel;
                 return relId === ticketId;
               });
               
-              if (hasRelationship && !relatedTicketIds.includes(ticket.id)) {
-                relatedTicketIds.push(ticket.id);
+              if (hasRelationship) {
+                relatedTicketIdsSet.add(ticket.id);
+                console.log(`Found relationship: Ticket ${ticket.id} is related to moved ticket ${ticketId}`);
               }
-            }
-          });
-          
-          // If we found related tickets, add notifications for them
-          if (relatedTicketIds.length > 0) {
+            });
+            
+            // Convert the Set to an Array for processing
+            const relatedTicketIds = Array.from(relatedTicketIdsSet);
+            
+            console.log(`Creating notifications for ${relatedTicketIds.length} related tickets:`, relatedTicketIds);
+            
             // Get the current user if available
             const currentUser = state.currentUser ? state.currentUser.username : 'A user';
             
-            // Create a notification for each related ticket
-            relatedTicketIds.forEach(relatedId => {
-              const relatedTicket = state.kanban.tickets[relatedId] || 
-                                   (Array.isArray(state.tickets) ? 
-                                    state.tickets.find(t => t.id === relatedId) : null);
-              
-              if (relatedTicket) {
-                // Prepare notification data
-                const notificationData = {
-                  title: 'Related Ticket Status Change',
-                  message: `${currentUser} moved related ticket RMA #${ticketToUpdate.rmaNumber || ticketId} to the "${toCol.name}" column.`,
-                  ticketId: relatedId,
-                  relatedTicketId: ticketId,
-                  type: 'status_change',
-                  fromColumn: fromCol.name,
-                  toColumn: toCol.name
-                };
-                
-                // Add notification to the store using the addNotification function
-                // We need to call it outside of this set function to avoid nested state updates
-                setTimeout(() => {
-                  const addNotification = useAppStore.getState().addNotification;
-                  if (typeof addNotification === 'function') {
-                    addNotification(notificationData);
-                  }
-                }, 0);
-              }
-            });
+            // NUCLEAR OPTION: Simple, direct calls to isolated notification system
+            if (relatedTicketIds.length > 0) {
+              // Aggregate into a single notification per move to avoid duplicates
+              const { addNotification } = useAppStore.getState();
+
+              const count = relatedTicketIds.length;
+              const sample = relatedTicketIds.slice(0, 3).join(', ');
+              const more = count > 3 ? `, +${count - 3} more` : '';
+
+              const notificationData = {
+                title: 'Related Tickets Updated',
+                message: `${currentUser} moved ticket ${movedTicket?.rmaNumber ? `RMA #${movedTicket.rmaNumber}` : ticketId} to "${toCol.name}". ${count} related ticket${count > 1 ? 's' : ''} affected${count ? ` (${sample}${more})` : ''}.`,
+                ticketId: ticketId,
+                // No relatedTicketId for aggregate; keep type/context
+                type: 'status_change_aggregate',
+                fromColumn: fromCol.name,
+                toColumn: toCol.name
+              };
+
+              addNotification(notificationData);
+            }
           }
         }
         
+        // Return the updated state with modifications
         console.log('Move complete, returning updated state');
         
         return { 

@@ -1,5 +1,5 @@
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Routes, Route, Link, Navigate } from 'react-router-dom';
 import TicketDetails from './TicketDetails';
 import KanbanBoard from './components/KanbanBoard';
@@ -79,17 +79,32 @@ function App() {
   const setTickets = useAppStore(s => s.setTickets);
   const setCustomers = useAppStore(s => s.setCustomers);
   const deduplicateAllRelationships = useAppStore(s => s.deduplicateAllRelationships);
+  const ensureNotificationsEnabled = useAppStore(s => s.ensureNotificationsEnabled);
 
   // Initialize sample data when app loads if store is empty
+  // Use a ref to track if we've already initialized data
+  const initializationRef = useRef(false);
+  
   useEffect(() => {
+    // Only initialize once to prevent double initialization in development mode
+    if (initializationRef.current) return;
+    
     console.log('App mounted - checking if sample data initialization is needed');
     console.log('Current tickets:', tickets?.length || 0, 'Current customers:', customers?.length || 0);
+    
+    // Ensure notifications are enabled at startup
+    ensureNotificationsEnabled();
+    console.log('Ensured notifications are enabled at startup');
+    
     const initialized = initializeSampleData({ tickets, customers, setTickets, setCustomers });
     console.log('Sample data initialization result:', initialized ? 'Data initialized' : 'No initialization needed');
     
     // Deduplicate all relationships in existing tickets
     deduplicateAllRelationships();
     console.log('Deduplicated all ticket relationships');
+    
+    // Mark as initialized
+    initializationRef.current = true;
   }, []);
 
   function handleLogout() {

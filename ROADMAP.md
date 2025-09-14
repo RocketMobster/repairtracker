@@ -7,6 +7,10 @@
 - [ ] Plugin system for extensibility (widgets, dashboard, integrations)
 - [ ] Role/permission management UI
 - [ ] User management (add/edit users, assign roles)
+- [ ] Notification admin settings (categories, dedup window, rate limiting)
+- [ ] Notification user preferences (opt-in/out per category, per project)
+- [ ] Notification persistence (localStorage and/or backend), per-user scoping
+- [ ] Optional channels (PWA push/email) and subscription management
 - [ ] Custom statuses and workflow configuration
 - [ ] Admin UI for managing form fields and templates
 - [ ] Dashboard customization (widgets, plugin support, layout)
@@ -53,7 +57,9 @@ RepairTracker Pro is a React + Vite + Tailwind CSS Progressive Web App (PWA) for
     - [x] Visual cues for blocked/required tickets (v0.9.0)
       - [x] Visual indicators for tickets blocked by other tickets
       - [x] Block movement of tickets that depend on incomplete tickets
-      - [x] Notification system for status changes in related tickets
+            - [~] Notification system for status changes in related tickets (partial in v0.9.18)
+                - Implemented: In-app notifications on move with aggregation
+                - Pending: Per-user delivery, persistence, admin settings, preferences, optional push/email
       - [x] Clear Groups button for removing group colors
       - [x] Fix color assignment on edit cancel
       - [x] Consistent group ID generation

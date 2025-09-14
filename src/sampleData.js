@@ -282,7 +282,8 @@ export function initializeSampleData(store) {
   const needsInitialization = (!tickets || tickets.length === 0) && (!customers || customers.length === 0);
   
   // Force initialization for testing - useful for development to always load sample data
-  const forceInitialization = true;
+  // CHANGED: Set to false to prevent double initialization
+  const forceInitialization = false;
   
   if (needsInitialization || forceInitialization) {
     console.log('Initializing store with sample data...');

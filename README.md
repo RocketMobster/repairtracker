@@ -1,4 +1,4 @@
-# RMA Repair Tracker v0.9.4
+# RMA Repair Tracker v0.9.18
 
 This project is a React + Vite + Tailwind CSS Progressive Web App (PWA).
 
@@ -44,7 +44,17 @@ This project is a React + Vite + Tailwind CSS Progressive Web App (PWA).
 
 ### Kanban Board
 - ~~**PRIORITY FIX NEEDED**: Drag and drop functionality still has issues:~~
-  - ~~Cards cannot be dragged between columns or reordered vertically within the same column~~
-  - ~~The drag handle (two horizontal lines) overlaps with the priority star button in the top-right corner~~
-  - ~~Current workaround: Cards can be dragged by clicking along the top edge of the card~~
-  - ~~Need to investigate DndKit configuration and interaction issues with sortable context~~
+  - ~~Cards cannot be dragged between columns or reordered vertically within the same column~~ ✅ Fixed in v0.9.13
+  - ~~The drag handle (two horizontal lines) overlaps with the priority star button in the top-right corner~~ ✅ Fixed in v0.9.13
+  - ~~Current workaround: Cards can be dragged by clicking along the top edge of the card~~ ✅ Fixed in v0.9.13
+  - ~~Need to investigate DndKit configuration and interaction issues with sortable context~~ ✅ Fixed in v0.9.13
+
+### Notification System
+- ~~**PRIORITY FIX NEEDED**: Notification system toggles to disabled state on application load:~~
+  - ~~Console logs show notifications toggling between enabled/disabled, ultimately staying disabled~~ ✅ Fixed in v0.9.16
+  - ~~Notifications are not generated when dragging cards due to disabled state~~ ✅ Fixed in v0.9.16
+  - ~~Moving cards works correctly but no notifications are displayed~~ ✅ Fixed in v0.9.16
+  
+   - Related ticket status-change notifications: Partially complete in v0.9.18
+      - Implemented: Notification emitted on move with aggregation to prevent duplicates; visible in Notification Center.
+      - Pending: Per-user scoping, persistence across sessions/backend, admin-configurable categories, user preferences, optional push/email.

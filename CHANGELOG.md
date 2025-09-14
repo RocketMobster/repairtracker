@@ -1,5 +1,86 @@
 # Changelog
 
+## [0.9.17] - 2025-09-14
+### Fixed
+- Notification System:
+  - Fixed persistent UI issue where notifications were created but not displayed
+  - Added forced re-rendering regardless of disabled state
+  - Enhanced notification system with additional debug logging
+  - Added mount-time check to ensure notifications are enabled
+  - Modified polling to always update UI even when system is disabled
+
+## [0.9.16] - 2025-09-14
+### Fixed
+  - Fixed persistent disabled state on application startup
+  - Added explicit startup function to ensure notifications are enabled
+## [0.9.18] - 2025-09-14
+### Changed
+- Notifications (Related Status Changes): Marked as partially complete.
+  - Implemented: Emission on related ticket status moves, aggregation to avoid duplicates, UI rendering with unread/clear.
+  - Pending (Admin/User integration): per-user scoping, persistence across sessions/backend, admin-configurable categories, user preferences, optional push/email channels, and basic auditing.
+  - Enhanced toggle function with error handling and state verification
+  - Added detailed logging to trace notification system state changes
+  - Fixed initialization sequence to prevent automatic toggling
+
+## [0.9.15] - 2025-09-14
+### Fixed
+- Notification System:
+  - Fixed StrictMode double mounting that caused notification system to toggle repeatedly
+  - Removed React StrictMode wrapper to prevent double initialization in development
+  - Added initialization guard using useRef to prevent multiple data loads
+  - Updated README to indicate all drag-and-drop issues are resolved
+  - Fixed toggle functionality to remain in the selected state
+
+## [0.9.14] - 2025-09-14
+### Fixed
+- Notification System:
+  - Fixed notification toggle functionality that was toggling repeatedly
+  - Modified interval-based polling to respect disabled state
+  - Improved notification toggle behavior to prevent state conflicts
+  - Enhanced logging to provide more detailed diagnostic information
+  - Added proper checks for disabled state before processing notifications
+
+## [0.9.13] - 2025-09-13
+### Fixed
+- Drag and Drop:
+  - Fixed critical bug that prevented dragging cards between columns
+  - Removed reference to undefined variable in moveTicket function
+  - Restored proper state update in cross-column drag operations
+  - Fixed error in drag end handler that was causing moves to fail silently
+
+## [0.9.12] - 2025-09-13
+### Fixed
+- Notification System:
+  - Implemented NUCLEAR OPTION with completely isolated notification system
+  - Moved notification handling entirely outside React/Zustand state management
+  - Implemented real-time notification polling with interval-based updates
+  - Added signature-based deduplication inside isolated notification system
+  - Fixed double initialization of sample data which was causing duplicate notifications
+  - Added comprehensive error handling with multiple fallback mechanisms
+  - Implemented proper cleanup and state isolation to prevent any possible leaks
+  - Created completely new notification API that bypasses traditional state flows
+
+## [0.9.7] - 2025-09-12
+### Fixed
+- Notification System:
+  - Completely rewritten notification generation logic to prevent duplicate notifications for blocked cards
+  - Added advanced duplicate detection with timestamp-based comparisons
+  - Implemented direct state updates with validation to ensure notification uniqueness
+  - Added extensive debug logging to help diagnose notification issues
+
+## [0.9.6] - 2025-09-12
+### Fixed
+- Notification System:
+  - Improved fix for duplicate notifications when moving blocked cards
+  - Completely redesigned relationship tracking algorithm to properly handle bidirectional relationships
+
+## [0.9.5] - 2025-09-12
+### Fixed
+- Notification System:
+  - Fixed z-index issue with the notification dropdown being covered by drop indicators
+  - Fixed duplicate notifications for blocked cards when moving them
+  - Added temporary developer toggle to enable/disable notifications (for development only)
+
 ## [0.9.4] - 2025-09-12
 ### Added
 - Notification System:

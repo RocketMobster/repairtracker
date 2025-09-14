@@ -1,19 +1,51 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { useAppStore } from '../store';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 
 export default function NotificationCenter() {
-  const notifications = useAppStore(state => state.notifications);
+  // NUCLEAR OPTION: Use global notification system instead of Zustand state
+  const getNotifications = useAppStore(state => state.getNotifications);
   const markNotificationRead = useAppStore(state => state.markNotificationRead);
   const markAllNotificationsRead = useAppStore(state => state.markAllNotificationsRead);
   const clearNotifications = useAppStore(state => state.clearNotifications);
+  const toggleDevNotifications = useAppStore(state => state.toggleDevNotifications);
+  // IMPORTANT: subscribe to the boolean state, not the function reference
+  const devNotificationsDisabled = useAppStore(state => state.devNotificationsDisabled);
+  const ensureNotificationsEnabled = useAppStore(state => state.ensureNotificationsEnabled);
+  
+  // Force ensure notifications are enabled when component mounts
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window._notificationSystem) {
+      if (window._notificationSystem.settings.disabled) {
+        console.log('🔄 NOTIFICATION CENTER: Found disabled state on mount, re-enabling...');
+        ensureNotificationsEnabled();
+      } else {
+        console.log('✅ NOTIFICATION CENTER: Notifications already enabled on mount');
+      }
+    }
+  }, []);
+  
+  // Force re-render periodically to update notifications from global system
+  const [renderTrigger, setRenderTrigger] = useState(0);
+  
+  useEffect(() => {
+    // Re-render every second to catch new notifications (no noisy logs)
+    const interval = setInterval(() => {
+      setRenderTrigger(prev => prev + 1);
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
   
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef(null);
   const navigate = useNavigate();
   
-  const unreadCount = notifications.filter(n => !n.read).length;
+  // Get notifications from global system
+  const notifications = useMemo(() => getNotifications(), [getNotifications, renderTrigger]);
+  
+  // Calculate unread count
+  const unreadCount = useMemo(() => notifications.filter(n => !n.read).length, [notifications]);
   
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -54,24 +86,30 @@ export default function NotificationCenter() {
     <div className="relative" ref={dropdownRef}>
       {/* Bell icon with notification count */}
       <button 
-        className="relative p-1 rounded-full hover:bg-gray-100 focus:outline-none"
+        className={`relative p-1 rounded-full hover:bg-gray-100 focus:outline-none ${devNotificationsDisabled ? 'opacity-50' : ''}`}
         onClick={() => setIsOpen(!isOpen)}
-        title={`${unreadCount} unread notifications`}
+        title={devNotificationsDisabled ? 'Notifications disabled (developer mode)' : `${unreadCount} unread notifications`}
       >
-        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <svg xmlns="http://www.w3.org/2000/svg" className={`h-6 w-6 ${devNotificationsDisabled ? 'text-gray-400' : 'text-blue-600'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
         </svg>
         
-        {unreadCount > 0 && (
+        {!devNotificationsDisabled && unreadCount > 0 && (
           <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
             {unreadCount > 9 ? '9+' : unreadCount}
+          </span>
+        )}
+        
+        {devNotificationsDisabled && (
+          <span className="absolute -top-1 -right-1 bg-gray-400 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+            ×
           </span>
         )}
       </button>
       
       {/* Dropdown for notifications */}
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-80 bg-white rounded-md shadow-lg overflow-hidden z-50">
+        <div className="absolute right-0 mt-2 w-80 bg-white rounded-md shadow-lg overflow-hidden z-[1000]">
           <div className="py-2 border-b border-gray-200">
             <div className="px-4 flex justify-between items-center">
               <h3 className="text-lg font-medium text-gray-900">Notifications</h3>
@@ -129,6 +167,29 @@ export default function NotificationCenter() {
           
           <div className="py-2 px-4 bg-gray-50 text-xs text-gray-500">
             <p>Note: User-specific notifications will be enhanced when the user management system is fully implemented.</p>
+            
+            {/* TEMPORARY: Developer toggle for notifications */}
+            <div className="mt-2 flex items-center justify-between">
+              <span className="text-xs font-medium text-gray-700">Developer: Notifications {devNotificationsDisabled ? 'Disabled' : 'Enabled'}</span>
+              <button 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggleDevNotifications();
+                }}
+                className={`relative inline-flex items-center h-5 rounded-full w-10 
+                  ${devNotificationsDisabled ? 'bg-gray-300' : 'bg-blue-600'}`}
+                title="TEMPORARY: Developer toggle for notifications"
+              >
+                <span className="sr-only">Toggle notifications</span>
+                <span 
+                  className={`inline-block w-4 h-4 transform bg-white rounded-full transition-transform
+                    ${devNotificationsDisabled ? 'translate-x-1' : 'translate-x-5'}`} 
+                />
+              </button>
+            </div>
+            <div className="mt-1 text-xs italic text-gray-400">
+              (TEMPORARY: For development use only - remove in production)
+            </div>
           </div>
         </div>
       )}
